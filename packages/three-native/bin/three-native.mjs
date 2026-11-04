@@ -2,6 +2,11 @@
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import {
+  DeviceAutomation,
+  setupAutomation,
+  startAutomationServer,
+} from "../lib/automation.mjs";
 import { parseArgs } from "node:util";
 import { formatDiagnostic } from "../lib/analyze.mjs";
 import {
@@ -28,6 +33,13 @@ const help = `Three Native — Three.js scenes on native iOS and the web
   three-native prepare
   three-native dev web|ios [--simulator UDID | --device UDID] [--port 8081]
   three-native devices [--json]
+  three-native device setup|serve|status|mcp
+  three-native device connect --device UDID
+  three-native device snapshot|screenshot [--output FILE]
+  three-native device tap --id LABEL | --x POINTS --y POINTS
+  three-native device swipe --direction up|down|left|right
+  three-native device type --text TEXT [--id LABEL] [--clear]
+  three-native device disconnect
   three-native mcp [--project PATH] [--simulator UDID | --device UDID]
   three-native tools <workflow> <command> [upstream options]
   three-native logs ios --device UDID --restart
@@ -37,13 +49,14 @@ const help = `Three Native — Three.js scenes on native iOS and the web
 Configure ${configName}. Native hosts are generated in .three-native/.
 iOS builds require macOS and Xcode. Publishing and App Store submission are separate.
 `;
-function run(command, args, cwd) {
+function run(command, args, cwd, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
       stdio: "inherit",
       env: {
         ...process.env,
+        ...options.env,
         CMAKE_BUILD_PARALLEL_LEVEL: "2",
         MAKEFLAGS: "-j2",
         XCODEBUILDMCP_SENTRY_DISABLED: "true",
@@ -102,6 +115,13 @@ async function main() {
       project: { type: "string" },
       restart: { type: "boolean" },
       port: { type: "string" },
+      output: { type: "string" },
+      id: { type: "string" },
+      x: { type: "string" },
+      y: { type: "string" },
+      direction: { type: "string" },
+      text: { type: "string" },
+      clear: { type: "boolean" },
     },
   });
   if (values.version) {
@@ -135,6 +155,88 @@ async function main() {
     }
     return;
   }
+  if (command === "device") {
+    if (process.platform !== "darwin")
+      throw new Error("iPhone automation requires macOS and Xcode.");
+    const config = await loadConfig(cwd);
+    if (values.port !== undefined) {
+      const port = Number(values.port);
+      if (!Number.isInteger(port) || port < 1024 || port > 65535)
+        throw new Error("port must be an integer from 1024 to 65535.");
+      config.ios.automation.port = port;
+    }
+    const api = new DeviceAutomation(config);
+    let result;
+    switch (platform) {
+      case "setup":
+        result = await setupAutomation(config, run);
+        break;
+      case "serve": {
+        const server = await startAutomationServer(config);
+        if (!server.owned)
+          throw new Error(`Appium is already listening at ${api.url}.`);
+        console.log(
+          `Device automation listening at ${api.url}. Keep this terminal open.`,
+        );
+        const stop = async () => {
+          await api.disconnect().catch(() => {});
+          await server.stop();
+        };
+        process.once("SIGINT", stop);
+        process.once("SIGTERM", stop);
+        await new Promise((resolve) => server.child.once("exit", resolve));
+        process.off("SIGINT", stop);
+        process.off("SIGTERM", stop);
+        return;
+      }
+      case "mcp": {
+        const { serveDeviceMcp } = await import("../lib/automation-mcp.mjs");
+        await serveDeviceMcp(config, values, { uiOnly: true });
+        return;
+      }
+      case "connect":
+        result = await api.connect(values);
+        break;
+      case "status":
+        result = await api.status();
+        break;
+      case "snapshot":
+        result = await api.snapshot();
+        break;
+      case "screenshot": {
+        const output = path.resolve(
+          values.output ?? `device-${Date.now()}.png`,
+        );
+        await writeFile(output, Buffer.from(await api.screenshot(), "base64"), {
+          flag: "wx",
+        });
+        result = { path: output };
+        break;
+      }
+      case "tap":
+        result = await api.tap({
+          id: values.id,
+          x: values.x === undefined ? undefined : Number(values.x),
+          y: values.y === undefined ? undefined : Number(values.y),
+        });
+        break;
+      case "swipe":
+        result = await api.swipe(values.direction);
+        break;
+      case "type":
+        result = await api.type(values);
+        break;
+      case "disconnect":
+        result = await api.disconnect();
+        break;
+      default:
+        throw new Error(
+          `Unknown device command: ${platform ?? "(missing)"}\n${help}`,
+        );
+    }
+    console.log(JSON.stringify(result ?? { ok: true }, null, 2));
+    return;
+  }
   if (command === "mcp" || command === "logs") {
     if (process.platform !== "darwin")
       throw new Error("iOS tooling requires macOS and Xcode.");
@@ -160,8 +262,8 @@ async function main() {
         cwd,
       );
     } else {
-      const { host } = await configureTooling(config, values);
-      await run("npx", ["--yes", toolingPackage, "mcp"], host);
+      const { serveDeviceMcp } = await import("../lib/automation-mcp.mjs");
+      await serveDeviceMcp(config, values);
     }
     return;
   }

@@ -26,7 +26,7 @@ export function validateTarget({ simulator, device }) {
       throw new Error("Use a device UDID from three-native devices.");
   }
 }
-async function noSymlink(file) {
+export async function noSymlink(file) {
   try {
     if ((await lstat(file)).isSymbolicLink())
       throw new Error(`Refusing to use tooling symlink: ${file}`);

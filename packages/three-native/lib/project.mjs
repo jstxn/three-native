@@ -81,6 +81,43 @@ export async function loadConfig(root) {
       "ios.appleTeamId must be your 10-character Apple development team ID.",
     );
   if (
+    config.ios.automation !== undefined &&
+    (!config.ios.automation ||
+      typeof config.ios.automation !== "object" ||
+      Array.isArray(config.ios.automation))
+  )
+    throw new Error("ios.automation must be a configuration object.");
+  const automation = {
+    port: 4723,
+    wdaLocalPort: 8100,
+    wdaBundleIdentifier: `${config.ios.bundleIdentifier}.wda`,
+    ...config.ios.automation,
+  };
+  for (const key of ["port", "wdaLocalPort"])
+    if (
+      !Number.isInteger(automation[key]) ||
+      automation[key] < 1024 ||
+      automation[key] > 65535
+    )
+      throw new Error(
+        `ios.automation.${key} must be an integer from 1024 to 65535.`,
+      );
+  if (automation.port === automation.wdaLocalPort)
+    throw new Error("ios.automation.port and wdaLocalPort must differ.");
+  if (
+    typeof automation.wdaBundleIdentifier !== "string" ||
+    !/^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/.test(automation.wdaBundleIdentifier)
+  )
+    throw new Error(
+      "ios.automation.wdaBundleIdentifier must be a reverse-domain identifier.",
+    );
+  if (
+    automation.usePrebuiltWDA !== undefined &&
+    typeof automation.usePrebuiltWDA !== "boolean"
+  )
+    throw new Error("ios.automation.usePrebuiltWDA must be boolean.");
+  config.ios.automation = automation;
+  if (
     typeof config.name !== "string" ||
     !config.name.trim() ||
     !/[a-zA-Z]/.test(config.name)

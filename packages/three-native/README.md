@@ -10,7 +10,7 @@ npx three-native doctor
 npx three-native dev ios
 ```
 
-The registry commands become available after publication. For this unpublished alpha, install the `jstxn-three-native-0.3.0.tgz` produced by `npm pack` instead. Node 22.18+ is required. iOS builds need macOS and Xcode. The CLI uses npm to install the generated host's pinned dependencies even when installed through Bun.
+The registry commands become available after publication. For this unpublished alpha, install the `jstxn-three-native-0.4.0.tgz` produced by `npm pack` instead. Node 22.18+ is required. iOS builds need macOS and Xcode. The CLI uses npm to install the generated host's pinned dependencies even when installed through Bun.
 
 ## Point at your existing entry
 
@@ -213,28 +213,84 @@ For example, a client that accepts `mcpServers` configuration can use an absolut
 
 The verified press path is `touch` with down/up and a short delay. Upstream semantic `tap` reported success without activating controls in this Simulator; use `touch` and verify the resulting screen. Refresh the snapshot after scrolling or changing screens.
 
-The first tooling invocation downloads the pinned upstream package through npm. MCP telemetry is disabled for this child process. Simulator tools support input, snapshots, screenshots, build/install/launch, and log capture. Physical tools support build/install/launch/test; **physical UI automation is not supplied by this integration**. Use the device itself to interact with the game and grant permissions.
+The first tooling invocation downloads the pinned upstream package through npm. MCP telemetry is disabled for this child process. Simulator tools support input, snapshots, screenshots, build/install/launch, and log capture. Xcode tools handle physical build/install/launch/test. The `device_ui_*` tools described below add physical UI control through Appium and WebDriverAgent. Permission prompts remain visible and are not accepted automatically.
 
 Physical deployment needs device trust, Developer Mode, and signing. Set `ios.appleTeamId` to your 10-character team ID if needed; it is passed to Expo's generated Xcode project. The CLI cannot provision an Apple account for you. For physical stdout, `three-native logs ios --device YOUR_DEVICE_UDID --restart` explicitly restarts the app and streams its console output. Simulator launch tools report a captured log file. [Verified upstream capabilities](https://github.com/jstxn/three-native/blob/main/docs/native-device-research.md).
 
+## Control a physical iPhone
+
+Connect and unlock the phone, trust the Mac, and enable **Developer Mode** and **Settings → Developer → Enable UI Automation**. Install your app on it with `dev ios --device UDID` first. Add your Apple development team to the same config:
+
+```js
+export default {
+  entry: "./src/main.js",
+  ios: {
+    bundleIdentifier: "com.example.mygame",
+    appleTeamId: "YOURTEAMID", // 10 characters
+    automation: {
+      wdaBundleIdentifier: "com.example.mygame.wda",
+      // port: 4723, wdaLocalPort: 8100,
+    },
+  },
+};
+```
+
+The runner bundle identifier must be covered by your signing team/profile. Xcode may require account setup or the phone may ask you to trust the development runner. The CLI reports signing and connection errors; it cannot bypass device security. [Apple Developer Mode](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device), [Appium physical-device setup](https://github.com/appium/appium-xcuitest-driver/blob/v12.22.8/docs/getting-started/device-setup.md).
+
+```sh
+# Once per project: install pinned Appium 3.9.0 + XCUITest 12.22.8 locally.
+npx three-native device setup
+
+# Keep this running in a terminal for CLI control.
+npx three-native device serve
+
+# In another terminal:
+npx three-native device connect --device YOUR_DEVICE_UDID
+npx three-native device snapshot
+npx three-native device screenshot --output iphone.png
+npx three-native device tap --id 'Start game'
+npx three-native device tap --x 200 --y 400
+npx three-native device swipe --direction up
+npx three-native device type --id 'Player name' --text 'Player One' --clear
+npx three-native device disconnect
+```
+
+`snapshot` returns the native accessibility hierarchy and the screen rectangle in **logical points**. Use those points for coordinate taps; screenshots may contain more pixels. Accessibility IDs/labels identify native controls. Three.js objects inside the GPU canvas use coordinate input; meshes do not automatically become native accessibility nodes. Typing without `--id` uses the focused text field.
+
+Sessions preserve app data, do not reinstall the app, and do not automatically accept permission prompts. Disconnecting ends the automation session without resetting the app. `serve` binds only to `127.0.0.1`; stop it with Ctrl-C. It is a local development service without authentication and must not be exposed through a public tunnel. Screenshots and UI trees may contain private phone content, so keep captured artifacts out of public commits.
+
+For MCP, run the same existing command after `device setup`:
+
+```sh
+npx three-native mcp --project /absolute/project --device YOUR_DEVICE_UDID
+```
+
+For an already-installed app without a generated Xcode workspace, use `three-native device mcp --device YOUR_DEVICE_UDID`; this exposes only the UI tools.
+
+The server adds `device_ui_connect`, `device_ui_status`, `device_ui_snapshot`, `device_ui_screenshot`, `device_ui_tap`, `device_ui_swipe`, `device_ui_type`, and `device_ui_disconnect` alongside the Xcode tools. `device_ui_connect` starts the local Appium service if necessary. Services and sessions started by that MCP connection are closed on disconnect; a separately started CLI service is preserved.
+
+First connection may take several minutes while Xcode builds/signs WebDriverAgent. Advanced setups can set `ios.automation.usePrebuiltWDA: true` and prebuild the runner into `.three-native/automation/wda-build`. `--simulator UDID` is also accepted by `device connect` for checking the same integration on Simulator. [Pinned versions, protocols, and setup details](https://github.com/jstxn/three-native/blob/main/docs/physical-device-automation.md).
+
 ## Commands
 
-| Command                                                   | Result                                                                 |
-| --------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `init --entry ./src/main.js`                              | Add config for an existing browser entry or scene factory              |
-| `init`                                                    | Add config and a small scene skeleton                                  |
-| `doctor [--json]`                                         | Analyze the entry and relative imports; explain required changes       |
-| `prepare`                                                 | Check compatibility and generate the host without installing/compiling |
-| `dev web`                                                 | Run the adapted scene in a browser with Metro reload                   |
-| `dev ios --simulator UDID`                                | Build/run the iOS development host                                     |
-| `dev ios --device UDID`                                   | Build/run on a trusted, signed physical device                         |
-| `devices [--json]`                                        | List installed Simulators and physical-device connection states        |
-| `mcp [--project PATH] [--simulator UDID] [--device UDID]` | Start the project-configured MCP server with one optional target       |
-| `tools <workflow> <command>`                              | Run an upstream device/Simulator tool                                  |
-| `logs ios --device UDID --restart`                        | Restart a physical app and stream stdout                               |
-| `build web`                                               | Export to `.three-native/dist`                                         |
-| `build ios`                                               | Build a Release Simulator `.app` in `.three-native/build`              |
-| `preview ios --simulator UDID`                            | Stream/control that Simulator at localhost:8087                        |
+| Command                                                          | Result                                                                 |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `init --entry ./src/main.js`                                     | Add config for an existing browser entry or scene factory              |
+| `init`                                                           | Add config and a small scene skeleton                                  |
+| `doctor [--json]`                                                | Analyze the entry and relative imports; explain required changes       |
+| `prepare`                                                        | Check compatibility and generate the host without installing/compiling |
+| `dev web`                                                        | Run the adapted scene in a browser with Metro reload                   |
+| `dev ios --simulator UDID`                                       | Build/run the iOS development host                                     |
+| `dev ios --device UDID`                                          | Build/run on a trusted, signed physical device                         |
+| `device setup / serve / connect`                                 | Install local automation tools, start service, and connect an iPhone   |
+| `device snapshot / screenshot / tap / swipe / type / disconnect` | Inspect and interact with the connected iPhone                         |
+| `devices [--json]`                                               | List installed Simulators and physical-device connection states        |
+| `mcp [--project PATH] [--simulator UDID] [--device UDID]`        | Start the project-configured MCP server with one optional target       |
+| `tools <workflow> <command>`                                     | Run an upstream device/Simulator tool                                  |
+| `logs ios --device UDID --restart`                               | Restart a physical app and stream stdout                               |
+| `build web`                                                      | Export to `.three-native/dist`                                         |
+| `build ios`                                                      | Build a Release Simulator `.app` in `.three-native/build`              |
+| `preview ios --simulator UDID`                                   | Stream/control that Simulator at localhost:8087                        |
 
 `--port` selects a web dev or simulator preview port. Native compilation and Metro export use two workers. Generated files can be recreated by removing `.three-native/`; existing source and package.json are preserved.
 

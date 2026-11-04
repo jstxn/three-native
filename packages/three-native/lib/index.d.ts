@@ -3,7 +3,16 @@ import type { WebGPURenderer } from "three/webgpu";
 export interface ThreeNativeConfig {
   entry: string;
   name?: string;
-  ios?: { bundleIdentifier?: string; appleTeamId?: string };
+  ios?: {
+    bundleIdentifier?: string;
+    appleTeamId?: string;
+    automation?: {
+      port?: number;
+      wdaLocalPort?: number;
+      wdaBundleIdentifier?: string;
+      usePrebuiltWDA?: boolean;
+    };
+  };
   assets?: string[];
   preview?: { device?: string; orientation?: "portrait" | "landscape" };
 }

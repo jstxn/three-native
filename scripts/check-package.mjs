@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 const tarball = path.resolve(
-  process.argv[2] ?? "artifacts/jstxn-three-native-0.3.0.tgz",
+  process.argv[2] ?? "artifacts/jstxn-three-native-0.4.0.tgz",
 );
 for (const manager of ["npm", "bun"]) {
   const root = await mkdtemp(path.join(tmpdir(), `three-native-${manager}-`));
@@ -62,7 +62,7 @@ for (const manager of ["npm", "bun"]) {
     const cli = path.join(root, "node_modules/.bin/three-native");
     assert.equal(
       execFileSync(cli, ["--version"], { cwd: root, encoding: "utf8" }).trim(),
-      "0.3.0",
+      "0.4.0",
     );
     execFileSync(cli, ["init", "--entry", "src/scene.js"], {
       cwd: root,

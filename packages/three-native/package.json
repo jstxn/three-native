@@ -1,6 +1,6 @@
 {
   "name": "@jstxn/three-native",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Run existing Three.js scenes on iOS and the web with a generated native host.",
   "type": "module",
   "license": "MIT",
@@ -34,13 +34,14 @@
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "check": "node --check bin/three-native.mjs && node --check lib/project.mjs && node --check lib/analyze.mjs && node --check lib/watch.mjs && node --check runtime/BrowserEntry.mjs && node --check lib/tooling.mjs && node --check runtime/native-core.mjs && node --check runtime/devices.mjs"
+    "check": "node --check bin/three-native.mjs && node --check lib/project.mjs && node --check lib/analyze.mjs && node --check lib/watch.mjs && node --check runtime/BrowserEntry.mjs && node --check lib/tooling.mjs && node --check runtime/native-core.mjs && node --check runtime/devices.mjs && node --check lib/automation.mjs && node --check lib/automation-mcp.mjs"
   },
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "@babel/core": "7.29.13"
+    "@babel/core": "7.29.13",
+    "@modelcontextprotocol/sdk": "1.32.2"
   },
   "repository": {
     "type": "git",
