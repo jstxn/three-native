@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="350" viewBox="0 0 1200 350" role="img" aria-labelledby="title desc">
+  <title id="title">Keep your Three.js. Build for iOS.</title>
+  <desc id="desc">A shared copper scene connects a browser window and an iPhone-shaped native host. Three.js renders through React Native WebGPU and Metal.</desc>
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#c0d9e1" stroke-opacity=".07"/></pattern>
+    <linearGradient id="copper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f1b390"/><stop offset=".52" stop-color="#c57754"/><stop offset="1" stop-color="#8d402d"/></linearGradient>
+    <path id="scene" d="M-41 5C-51-22-5-44 21-31S48 13 31 35-14 33-21 10 18-30 37-10 12 34-11 20-44-5-18-23 17-3 5 17-34 32-41 5Z" fill="none" stroke="url(#copper)" stroke-width="10" stroke-linecap="round"/>
+  </defs>
+  <rect width="1200" height="350" rx="22" fill="#122735"/>
+  <rect width="1200" height="350" rx="22" fill="url(#grid)"/>
+  <path d="M689 0V350" stroke="#466570" stroke-opacity=".32"/>
+  <text x="52" y="55" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="700" letter-spacing="2.8" fill="#8bcfc5">THREE NATIVE / EARLY ALPHA</text>
+  <text x="49" y="137" font-family="Arial,Helvetica,sans-serif" font-size="55" font-weight="700" letter-spacing="-2" fill="#f4f8fa">Keep your Three.js.</text>
+  <text x="49" y="202" font-family="Arial,Helvetica,sans-serif" font-size="55" font-weight="700" letter-spacing="-2" fill="#91d6c9">Build for iOS.</text>
+  <text x="52" y="250" font-family="Arial,Helvetica,sans-serif" font-size="19" fill="#c3d4dd">One entry. Native rendering. A familiar workflow.</text>
+  <text x="52" y="305" font-family="Arial,Helvetica,sans-serif" font-size="13" letter-spacing=".3" fill="#91aebc">THREE.JS → REACT NATIVE WEBGPU → METAL</text>
+  <path d="M895 261H947V175H979" stroke="#88cabc" stroke-width="2" stroke-dasharray="5 6" fill="none"/>
+  <rect x="734" y="86" width="236" height="177" rx="13" fill="#263f4c" stroke="#5d7b87"/>
+  <path d="M734 112H970" stroke="#5d7b87"/>
+  <circle cx="751" cy="99" r="3" fill="#c97d5a"/><circle cx="763" cy="99" r="3" fill="#cfba7c"/><circle cx="775" cy="99" r="3" fill="#88cabc"/>
+  <ellipse cx="850" cy="227" rx="61" ry="10" fill="#0f2430"/>
+  <use href="#scene" transform="translate(850 176) scale(1.1)"/>
+  <text x="805" y="295" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="700" letter-spacing="1.3" fill="#aec4cd">BROWSER</text>
+  <rect x="992" y="32" width="153" height="286" rx="28" fill="#0d1e29" stroke="#86a5b1" stroke-width="2"/>
+  <rect x="1001" y="41" width="135" height="268" rx="21" fill="#263f4c"/>
+  <rect x="1040" y="47" width="56" height="13" rx="6.5" fill="#0d1e29"/>
+  <text x="1032" y="89" font-family="Arial,Helvetica,sans-serif" font-size="10" letter-spacing="1.5" fill="#94d5c6">NATIVE iOS</text>
+  <ellipse cx="1068" cy="230" rx="49" ry="8" fill="#0f2430"/>
+  <use href="#scene" transform="translate(1068 177) scale(.86)"/>
+  <rect x="1046" y="279" width="46" height="4" rx="2" fill="#9db4bf"/>
+</svg>

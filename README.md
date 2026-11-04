@@ -1,16 +1,35 @@
 # Three Native
 
-[![CI](https://github.com/jstxn/three-native/actions/workflows/ci.yml/badge.svg)](https://github.com/jstxn/three-native/actions/workflows/ci.yml)
+![Keep your Three.js. Build for iOS. One entry, native rendering, a familiar workflow.](docs/media/hero.svg)
 
-An installable CLI and runtime that add a native iOS target to an existing Three.js project. The package lives in `packages/three-native/`; `examples/vanilla/` is an existing Vite + Three.js consumer. The root app is the visual native/browser reference demo.
+[![CI](https://github.com/jstxn/three-native/actions/workflows/ci.yml/badge.svg)](https://github.com/jstxn/three-native/actions/workflows/ci.yml) [![Stage: early alpha](https://img.shields.io/badge/stage-early_alpha-b95c3c)](#what-works-today) [![License: MIT](https://img.shields.io/badge/license-MIT-297d8d)](LICENSE)
 
-## See it running
+**Keep the scene you built. Add an iOS target.**
 
-![The same Three.js scene running in the native iOS Simulator and directly in a browser, rotating and changing materials](docs/media/three-native-demo.gif)
+Three Native adds a native iOS host to an existing Three.js project. Point a config at your entry file, check compatibility, and run it through React Native WebGPU and Metal. Preview device layouts in the browser, then interact with the actual Simulator or a connected iPhone through the CLI or MCP.
 
-**Left:** the native iOS app in an iPhone 18 Pro Simulator. **Right:** the same Three.js scene rendered directly in the browser. The 30 fps GIF shows live animation and material changes from user input in both runtimes.
+[Get started](#bring-your-project) · [See the measurements](#performance-you-can-inspect) · [Compatibility](#what-works-today) · [API & commands](packages/three-native/README.md)
 
-## Try the installable package
+> **Early alpha.** Install from a local tarball today; npm and Homebrew publishing are pending. Requires Node 22.18+. iOS builds require macOS and Xcode. The native host currently pins Three.js 0.186.0.
+
+## One scene. Two runtimes.
+
+![The same Three.js scene animating in a native iOS Simulator app and a browser, with material changes in both.](docs/media/three-native-demo.gif)
+
+**Left:** a native app in the iPhone 18 Pro Simulator. **Right:** the browser build. Both use the same scene source. This is a 30 fps recording; runtime measurements are below.
+
+| Keep building in Three.js | Get a native development workflow |
+| :-- | :-- |
+| **Use your existing entry.** Supported renderer setup, frame loops, viewport sizing, and pointer events are adapted automatically. | **Run on iOS.** A generated React Native host renders through WebGPU → Dawn → Metal, with JavaScript running in Hermes. |
+| **Keep control of your source.** Generated files live in `.three-native/`; your original entry and browser build stay intact. | **Find blockers early.** `doctor` reports unsupported code with a file, line, and suggested change before a native build starts. |
+| **Share scene logic.** Materials, geometry, animation, and interactions can serve both targets. | **Test the actual device.** Use native APIs, Simulator streaming, and physical-iPhone UI automation from the CLI or MCP. |
+
+## Bring your project
+
+Start with a small scene from your existing game or app. The [vanilla example](examples/vanilla) shows an ordinary `WebGLRenderer` entry with animation, resize handling, and pointer input.
+
+<details>
+<summary><strong>Build the alpha tarball</strong></summary>
 
 ```sh
 git clone https://github.com/jstxn/three-native.git
@@ -18,131 +37,128 @@ cd three-native
 npm ci
 mkdir -p artifacts
 npm pack ./packages/three-native --pack-destination ./artifacts
-# From your existing Three.js project:
+```
+
+The package is `artifacts/jstxn-three-native-0.4.0.tgz`. Use its absolute path in your own project below.
+
+</details>
+
+```sh
+# Run inside your existing Three.js project.
 npm install --save-dev /absolute/path/to/jstxn-three-native-0.4.0.tgz
-# Bun can install the same tarball with: bun add --dev /absolute/path/to/the.tgz
-npx three-native init --entry ./src/main.js --name "My App" --bundle-id com.example.myapp
+# Bun works too: bun add --dev /absolute/path/to/the.tgz
+
+npx three-native init --entry ./src/main.js --name "My Game" --bundle-id com.example.mygame
 npx three-native doctor
 npx three-native dev ios
-npx three-native build ios
-npx three-native preview ios --simulator <UDID>
 ```
 
-The CLI creates `three-native.config.mjs` and builds in `.three-native/`; it leaves the existing browser entry and package configuration intact. Point it at an ordinary browser entry: supported renderer setup, animation loops, viewport sizing, and pointer input are adapted automatically. `doctor` parses the entry and local imports and reports required changes with file/line locations; blocking issues stop generation and builds. An explicit `createScene(context)` factory remains available for custom integrations. See [the package README](packages/three-native/README.md) for the complete API and commands.
+`init` creates a config you can read and edit:
 
-The npm package and Homebrew formula are prepared locally, **not published**. npm and Bun installation checks use the real packed tarball. The Homebrew recipe in `packaging/homebrew/` needs the published release URL before distribution.
+```js
+import { defineConfig } from "@jstxn/three-native";
 
-## Device previews and native features
+export default defineConfig({
+  entry: "./src/main.js",
+  name: "My Game",
+  ios: { bundleIdentifier: "com.example.mygame" },
+  preview: { device: "iphone-18-pro", orientation: "portrait" },
+});
+```
 
-The browser build now includes a dropdown of 13 real iPhone/iPad sizes, portrait/landscape rotation, and fit/100% viewing. The app keeps its selected logical viewport and state while the outer preview scales. [Device sizes and Apple sources](docs/device-presets.md).
+Only `entry` is required. Try `npx three-native dev web` for the browser preview. `npx three-native build ios` creates a Release **Simulator** app; signed physical development uses `dev ios --device UDID`.
 
-Game code can import `native` from `@jstxn/three-native/native` to use haptics, accelerometer motion, camera capture, and foreground location. The generated host installs the modules and permission descriptions. The reference app includes a device-feature panel. Browser and Simulator limitations are explicit; selecting a model does not manufacture hardware.
+```mermaid
+flowchart LR
+    entry["Your Three.js entry"] --> check["doctor<br/>Compatibility + diagnostics"]
+    check --> host["Generated .three-native host"]
+    host --> ios["Native iOS<br/>WebGPU → Metal"]
+    host --> web["Browser preview<br/>13 device sizes"]
+    entry --> original["Your existing web build"]
+    style entry fill:#eaf3f5,stroke:#297d8d,color:#183548
+    style ios fill:#f8e8df,stroke:#b95c3c,color:#183548
+    style web fill:#eaf3f5,stroke:#297d8d,color:#183548
+```
 
-`three-native devices`, `dev ios --device UDID`, `mcp`, and `tools` connect project-specific development to XcodeBuildMCP. Physical build/install/launch and Simulator input/snapshots are supported by the upstream tools. Physical UI automation is available through the new Appium-backed `device` commands and `device_ui_*` MCP tools. [Adopter guide and commands](packages/three-native/README.md#use-native-device-features), [verified native/tooling research](docs/native-device-research.md).
+When code needs adaptation, the CLI gives you a place to start:
 
-## Real iPhone UI automation
+```text
+ERROR TN201 src/hud.js:12:3
+  document needs a native adaptation.
+  Change: Move this browser-only code to your web entry, or export
+  createScene(context) and implement it in the native host.
+```
 
-`three-native device setup` installs pinned Appium/XCUITest tools in the generated project. Use `device serve` and `device connect --device UDID` for CLI screenshots, UI inspection, taps, swipes, and typing. The same operations are available as `device_ui_*` MCP tools; Xcode build/install/launch tools remain available. This needs a trusted phone, Developer Mode, UI Automation enabled, and valid WebDriverAgent signing. [Setup and commands](packages/three-native/README.md#control-a-physical-iphone).
+[Automatic adaptation, diagnostics, and the scene-factory escape hatch →](packages/three-native/README.md#point-at-your-existing-entry)
 
-Verified on a real iPhone 17 Pro Max: screenshots, native hierarchy, coordinate and accessibility taps, scrolling, and MCP text entry/clearing. The proof used Settings; screenshots and private device data are kept out of Git.
+## Preview the target. Test the device.
 
-## Reference demo
+![The browser preview with an iPhone selector, rotation and zoom controls, and the shared Three.js scene at the selected device's logical size.](docs/media/device-preview.png)
 
-A standalone proof of concept: the same Three.js scene runs in a native iOS app and directly in a browser. A separate local browser page streams and controls the actual iOS Simulator app.
+**13 iPhone and iPad presets.** Select a target, rotate it, and switch between fit and 100% views. The app receives the selected logical viewport; changing the preview scale preserves its aspect ratio. [Sizes and Apple sources →](docs/device-presets.md)
 
-## Run locally
+**A live native view, too.** `three-native preview ios --simulator UDID` streams and controls the actual Simulator in a browser. The regular browser preview renders the web build; the stream runs the native app.
+
+**Hardware belongs in the app.** The native API exposes haptics, accelerometer motion, camera capture, and foreground location. The host includes the required modules and permission descriptions. Browser calls report unavailable features; previewing an iPhone does not emulate its hardware.
+
+```js
+import { native } from "@jstxn/three-native/native";
+
+if (native.info().environment === "device") {
+  await native.haptics.impact("light");
+}
+```
+
+**Automate a real iPhone.** Inspect the accessibility tree, capture screenshots, tap, swipe, and type through the CLI or the eight `device_ui_*` MCP tools. A trusted phone, Developer Mode, UI Automation, and valid signing are required.
 
 ```sh
-npm ci
-cp .env.example .env.local
-npm run ios -- --configuration Release
+npx three-native device setup
+npx three-native device serve                 # Keep this terminal open.
+# In another terminal:
+npx three-native device connect --device YOUR_DEVICE_UDID
+npx three-native device screenshot --output iphone.png
+npx three-native device tap --x 200 --y 400
 ```
 
-Select an iOS Simulator when prompted. The release app bundles its JavaScript and CC0 glTF asset; it does not require Metro to run.
+Physical UI control was verified on an iPhone 17 Pro Max using Settings screens. Three.js meshes use coordinate input; native controls can use accessibility IDs. [Physical-device setup and validation →](docs/physical-device-automation.md)
 
-Start the interactive simulator stream in a separate terminal, using its exact UDID from `xcrun simctl list devices available`:
+## Performance you can inspect
 
-```sh
-npm run preview:ios -- <simulator-udid>
-```
+![Measured browser rendering and local CLI timings: both sample scenes at 60 median FPS; source checks and host generation measured separately from native compilation.](docs/media/performance.svg)
 
-Keep that terminal open. The preview uses loopback port 8087 and a simulator-specific cleanup trap. Stopping it cleans up its streaming helper. It does not expose a host shell or open a public tunnel.
+Measurements from **November 4, 2026**, on an **Apple M5 Pro**. Chromium 156 used the Apple Metal WebGPU adapter at a **358 × 350 drawing buffer, DPR 1**. Each animated scene was sampled for 20 seconds after warmup.
 
-Build and serve the browser version:
+| Browser scene | Median reported FPS | Draw calls | Triangles |
+| :-- | --: | --: | --: |
+| Copper orbit · PBR + 64 instanced spheres | 60 | 4 | 17,153 |
+| Bundled glTF · textured model | 60 | 3 | 939 |
 
-```sh
-npm run build:web -- --max-workers 2
-python3 -m http.server 8086 --bind 127.0.0.1 --directory dist
-```
+Local `doctor --json` and `prepare` timings include Node startup and use the two-file vanilla example. They exclude dependency installation and Xcode compilation. **These are browser and CLI measurements, not physical-iPhone FPS or an end-to-end build-time promise.** Larger scenes, higher resolutions, device thermals, and third-party code need their own profiling.
 
-Open http://127.0.0.1:8086. **Open live iOS Simulator** opens the stream at http://127.0.0.1:8087. The two views are labeled separately: one executes the web build; the other streams a native app. `.env.local` supplies the local preview link and is not committed. Omit that variable for a web-only deployment.
+[Methodology, raw samples, and reproduction steps →](docs/benchmarks/README.md)
 
-The browser must support WebGPU. This proof reports an error instead of silently switching to WebGL.
+## What works today
 
-## What to try
+| Ready to try | Needs an explicit adaptation | Outside this alpha |
+| :-- | :-- | :-- |
+| Supported single-renderer browser entries; `requestAnimationFrame` / `setAnimationLoop`; resize and pointer input | DOM/CSS interfaces, keyboard and multitouch controls, custom GLSL, WebGL postprocessing, and unsupported loaders | TestFlight/App Store submission, Android, and general React Three Fiber compatibility |
+| An explicit `createScene(context)` API for custom integration | Third-party package internals and browser bundler aliases | A hosted public device cloud |
+| Device-size browser previews, native Simulator rendering, CLI/MCP tooling, physical UI automation | Hardware feature behavior and game performance require physical-device validation | A general JavaScript-to-Swift or GLSL-to-Metal compiler |
 
-- Copper orbit: a Three.js PBR material and 64 GPU-instanced spheres.
-- Bundled glTF: a textured avocado loaded from a self-contained GLB.
-- Tap the object, change its finish, pause/resume, and reset the view.
-- Reload the scene repeatedly; rotate the simulator; send it to the home screen and reopen it.
-- Compare the actual native stream with the browser build, without treating simulator FPS as physical-device performance.
+OrbitControls currently supports single-finger rotation. The browser preview does not reproduce native safe areas, the keyboard, or GPU performance. The [full compatibility guide](packages/three-native/README.md#current-boundaries) explains the current limits.
 
-## Code
+## Built to be inspected
 
-- `src/lib/proof-scene.ts`: shared scene construction, picking, updates, and resource disposal. No React Native imports.
-- `packages/three-native/lib/analyze.mjs`: source analysis, actionable diagnostics, and generated browser-entry adapters.
-- `packages/three-native/runtime/BrowserEntry.mjs`: native clock, renderer, viewport, and pointer bridge.
-- `packages/three-native/runtime/ThreeView.tsx`: the reusable canvas, asset resolver, presentation, resizing, and app lifecycle.
-- `src/components/proof-canvas.tsx`: adapts the reference scenes to the same public runtime.
-- `src/app/index.tsx`: shared native/web controls and runtime measurements.
-- `scripts/preview-ios.sh`: simulator streaming through pinned `serve-sim`.
+**41 tests** cover scene behavior, resource disposal, source preservation, compiler diagnostics, CLI safeguards, native API contracts, and device tooling. The [latest measured CI run](https://github.com/jstxn/three-native/actions/runs/41912271975) completed in **1m22s**, including lint, types, Node 24/22.18 tests, the web build, and npm/Bun tarball installs. Linux skips one macOS-specific test.
 
-The native pipeline is Three.js WebGPURenderer → React Native WebGPU → Dawn → Metal. JavaScript runs in Hermes; this is not JavaScript-to-Swift compilation. The browser uses the same renderer and scene through its own WebGPU implementation.
+CI uses one standard Linux job, cached dependencies, a five-minute cap, and cancellation of superseded runs. It does not upload build artifacts. [Contributor setup and checks →](docs/development.md#checks)
 
-The project began with the [upstream Expo WebGPU template](https://github.com/wcandillon/react-native-webgpu/tree/main/apps/expo-webgpu), simplified to plain Three.js and updated to the pinned WebGPU/Three versions in `package-lock.json`. Native project files are generated from `app.config.js`; do not edit them by hand.
+Want to help make more projects portable? Try a scene and [report a compatibility issue](https://github.com/jstxn/three-native/issues/new) with a minimal entry, `doctor --json` output, and the target runtime.
 
-## Checks
+- [Package API and CLI reference](packages/three-native/README.md)
+- [Run the reference app and contribute](docs/development.md)
+- [Device presets](docs/device-presets.md)
+- [Native feature and tooling notes](docs/native-device-research.md)
+- [Physical iPhone automation](docs/physical-device-automation.md)
 
-Run the repository quality gates before sending a change:
-
-```sh
-npm ci
-npm run check
-```
-
-Individual checks:
-
-```sh
-npm test
-npm run typecheck
-npm run lint
-npm run doctor
-npm run check:package
-```
-
-The [CI workflow](.github/workflows/ci.yml) runs on pull requests and pushes to `main`. On Node 24 it checks lint (including CLI and test files), app and test types, the unit/integration suite, the browser build, and real tarball installs through npm and Bun. It also runs the tests on the minimum supported Node 22.18, reusing the same dependency install.
-
-CI uses one standard Linux job with a five-minute timeout, npm caching, and cancellation of superseded runs. It does not upload build artifacts. Standard GitHub-hosted runners are [free for public repositories](https://docs.github.com/en/billing/concepts/product-billing/github-actions).
-
-Tests use two workers; native signing, device automation, and GPU acceptance remain separate hardware checks. These are repository contributor checks and are not copied into generated adopter projects.
-
-The Node suite checks scene geometry, picking, resource disposal, CLI overwrite protections, browser-entry execution, animation/resize/input adaptation, OrbitControls, imported-file diagnostics, and source preservation. It does not substitute for GPU rendering checks on iOS and the browser.
-
-## Verified locally on 2026-11-04
-
-- Node 24.15.0, Expo 57.0.31, React Native 0.86.3, Three.js 0.186.0, React Native WebGPU 0.21.1.
-- Xcode 27.2, iPhone 18 Pro Simulator with iOS 27.2, Release builds.
-- 41 scene/compiler/CLI/native-capability tests, lint, type checking, and Expo Doctor (21/21 checks with the native feature modules).
-- Real tarball installation through both npm and Bun; config and host generation preserve the existing source.
-- The reference app builds and renders with the native feature modules. The CLI-generated vanilla app also previously built and rendered natively; its updated native API import passes iOS bundle generation. The vanilla config now points directly to its existing `src/main.js` browser entry, including WebGLRenderer, DOM mounting, a render loop, and pointer input; no manual scene-factory adaptation is required.
-- Reference GLB rendering, three model reloads, native scene changes from browser input, and background/resume through the browser's Home control.
-- Browser WebGPU export, model loading, pause/finish controls, and narrow layout. All 13 device viewports and orientation/state preservation were checked.
-- Combined MCP initialization exposes 52 tools; device discovery, Simulator scrolling, touch down/up, the location permission prompt, and simulated coordinates were exercised. Semantic `tap` needs the documented touch workaround in this environment.
-
-The initial native checks caught two version/configuration requirements now owned by the toolkit: Expo's scene lifecycle opt-in for iOS 27, and Three r186 rather than r187 on this Hermes runtime. GLB samples parse fetched bytes directly to avoid the native `FileLoader` progress-stream incompatibility.
-
-## Boundaries
-
-This is a local demonstration, not a public device cloud. Public interactive simulator sessions need a hosted Mac, authentication, session isolation, and streaming capacity. A simulator stream is not a physical iPhone stream. Physical-device API behavior, performance, signing/distribution, Android, arbitrary third-party Three plugins, and App Store acceptance are not established by this proof. The initial native-feature pass had no connected iPhone. The subsequent UI-automation pass exercised a physical iPhone 17 Pro Max on iOS 27.2 through CLI and MCP; the Three.js hardware APIs and physical-device game performance remain separate checks.
-
-The [Avocado model](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/Avocado) is by Microsoft, distributed under CC0. Its source attribution is retained in `assets/models/Avocado-source.md`.
+MIT licensed. Built on [Three.js](https://threejs.org/), [React Native WebGPU](https://github.com/wcandillon/react-native-webgpu), and [Expo](https://expo.dev/). The bundled [Avocado model](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/Avocado) is by Microsoft, CC0; [attribution](assets/models/Avocado-source.md) is retained.
