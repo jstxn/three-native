@@ -36,5 +36,14 @@
   },
   "dependencies": {
     "@babel/core": "7.29.13"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jstxn/three-native.git",
+    "directory": "packages/three-native"
+  },
+  "homepage": "https://github.com/jstxn/three-native#readme",
+  "bugs": {
+    "url": "https://github.com/jstxn/three-native/issues"
   }
 }

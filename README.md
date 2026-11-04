@@ -5,6 +5,9 @@ An installable CLI and runtime that add a native iOS target to an existing Three
 ## Try the installable package
 
 ```sh
+git clone https://github.com/jstxn/three-native.git
+cd three-native
+npm ci
 mkdir -p artifacts
 npm pack ./packages/three-native --pack-destination ./artifacts
 # From your existing Three.js project:
