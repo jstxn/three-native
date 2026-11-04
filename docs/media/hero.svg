@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="350" viewBox="0 0 1200 350" role="img" aria-labelledby="title desc">
-  <title id="title">Keep your Three.js. Build for iOS.</title>
-  <desc id="desc">A shared copper scene connects a browser window and an iPhone-shaped native host. Three.js renders through React Native WebGPU and Metal.</desc>
+  <title id="title">Build with your agent. Test on your iPhone.</title>
+  <desc id="desc">A shared Three.js game connects the browser development loop to native iPhone testing through React Native WebGPU and Metal.</desc>
   <defs>
     <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#c0d9e1" stroke-opacity=".07"/></pattern>
     <linearGradient id="copper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f1b390"/><stop offset=".52" stop-color="#c57754"/><stop offset="1" stop-color="#8d402d"/></linearGradient>
@@ -9,10 +9,10 @@
   <rect width="1200" height="350" rx="22" fill="#122735"/>
   <rect width="1200" height="350" rx="22" fill="url(#grid)"/>
   <path d="M689 0V350" stroke="#466570" stroke-opacity=".32"/>
-  <text x="52" y="55" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="700" letter-spacing="2.8" fill="#8bcfc5">THREE NATIVE / EARLY ALPHA</text>
-  <text x="49" y="137" font-family="Arial,Helvetica,sans-serif" font-size="55" font-weight="700" letter-spacing="-2" fill="#f4f8fa">Keep your Three.js.</text>
-  <text x="49" y="202" font-family="Arial,Helvetica,sans-serif" font-size="55" font-weight="700" letter-spacing="-2" fill="#91d6c9">Build for iOS.</text>
-  <text x="52" y="250" font-family="Arial,Helvetica,sans-serif" font-size="19" fill="#c3d4dd">One entry. Native rendering. A familiar workflow.</text>
+  <text x="52" y="55" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="700" letter-spacing="2.8" fill="#8bcfc5">THREE NATIVE / AGENT → IPHONE</text>
+  <text x="49" y="137" font-family="Arial,Helvetica,sans-serif" font-size="50" font-weight="700" letter-spacing="-2" fill="#f4f8fa">Build with your agent.</text>
+  <text x="49" y="202" font-family="Arial,Helvetica,sans-serif" font-size="50" font-weight="700" letter-spacing="-2" fill="#91d6c9">Test on your iPhone.</text>
+  <text x="52" y="250" font-family="Arial,Helvetica,sans-serif" font-size="19" fill="#c3d4dd">Code. Check. Run on device. Iterate.</text>
   <text x="52" y="305" font-family="Arial,Helvetica,sans-serif" font-size="13" letter-spacing=".3" fill="#91aebc">THREE.JS → REACT NATIVE WEBGPU → METAL</text>
   <path d="M895 261H947V175H979" stroke="#88cabc" stroke-width="2" stroke-dasharray="5 6" fill="none"/>
   <rect x="734" y="86" width="236" height="177" rx="13" fill="#263f4c" stroke="#5d7b87"/>
