@@ -113,3 +113,19 @@ test("prepare rejects file symlinks before overwriting project data", async (t) 
   await assert.rejects(prepareProject(config), /generated symlink/);
   assert.equal(await readFile(original, "utf8"), "important");
 });
+
+test("config needs only an entry and validates explicit app metadata", async (t) => {
+  const root = await fixture(t);
+  await writeFile(
+    path.join(root, "main.js"),
+    "export function createScene() { return {}; }\n",
+  );
+  const file = path.join(root, "three-native.config.mjs");
+  await writeFile(file, "export default { entry: './main.js' };\n");
+  const config = await loadConfig(root);
+  assert.equal(config.name, "Three Native App");
+  assert.equal(config.ios.bundleIdentifier, "com.example.threenative");
+  await prepareProject(config);
+  await writeFile(file, "export default { entry: './main.js', ios: null };\n");
+  await assert.rejects(loadConfig(root), /ios must be/);
+});

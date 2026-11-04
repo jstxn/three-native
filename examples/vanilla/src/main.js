@@ -1,7 +1,7 @@
-import * as THREE from "three/webgpu";
+import * as THREE from "three";
 import { createScene } from "./scene.js";
 const demo = createScene();
-const renderer = new THREE.WebGPURenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 document.body.appendChild(renderer.domElement);
 function resize() {
   renderer.setSize(innerWidth, innerHeight);

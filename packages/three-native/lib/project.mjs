@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { access, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { analyzeProject, formatDiagnostic } from "./analyze.mjs";
 
 export const packageRoot = fileURLToPath(new URL("../", import.meta.url));
 export const configName = "three-native.config.mjs";
@@ -45,11 +46,23 @@ export async function loadConfig(root) {
   const filename = path.join(root, configName);
   if (!(await exists(filename)))
     throw new Error(`Missing ${configName}. Run three-native init first.`);
-  const config = (
+  const declared = (
     await import(`${pathToFileURL(filename).href}?t=${Date.now()}`)
   ).default;
-  if (!config || typeof config !== "object")
+  if (!declared || typeof declared !== "object" || Array.isArray(declared))
     throw new Error(`${configName} must export a default config object.`);
+  if (
+    declared.ios !== undefined &&
+    (!declared.ios ||
+      typeof declared.ios !== "object" ||
+      Array.isArray(declared.ios))
+  )
+    throw new Error("ios must be a configuration object.");
+  const config = {
+    name: "Three Native App",
+    ...declared,
+    ios: { bundleIdentifier: "com.example.threenative", ...declared.ios },
+  };
   if (
     typeof config.name !== "string" ||
     !config.name.trim() ||
@@ -101,7 +114,15 @@ export async function initProject(root, options = {}) {
   );
   return configFile;
 }
-export async function prepareProject(config) {
+export async function prepareProject(config, report) {
+  report ??= await analyzeProject(config);
+  if (!report.ok)
+    throw new Error(
+      report.diagnostics
+        .filter((item) => item.severity === "error")
+        .map(formatDiagnostic)
+        .join("\n"),
+    );
   const host = path.join(config.root, ".three-native");
   if (await exists(host)) {
     if ((await lstat(host)).isSymbolicLink())
@@ -120,6 +141,7 @@ export async function prepareProject(config) {
     "App.tsx",
     "scene.ts",
     "ThreeView.tsx",
+    "BrowserEntry.mjs",
     "metro.config.js",
   ]) {
     try {
@@ -177,11 +199,17 @@ export async function prepareProject(config) {
   if (!relative.startsWith(".")) relative = "./" + relative;
   await writeFile(
     path.join(host, "scene.ts"),
-    `export { createScene } from ${JSON.stringify(relative)};\n`,
+    report.mode === "entry"
+      ? report.code
+      : `export { createScene } from ${JSON.stringify(relative)};\n`,
   );
   await writeFile(
     path.join(host, "ThreeView.tsx"),
     await readFile(path.join(packageRoot, "runtime/ThreeView.tsx")),
+  );
+  await writeFile(
+    path.join(host, "BrowserEntry.mjs"),
+    await readFile(path.join(packageRoot, "runtime/BrowserEntry.mjs")),
   );
   await writeFile(
     path.join(host, "metro.config.js"),
@@ -190,21 +218,5 @@ export async function prepareProject(config) {
   return { host, installHash: createHash("sha256").update(json).digest("hex") };
 }
 export async function inspectProject(config) {
-  const source = await readFile(config.entry, "utf8");
-  const warnings = [];
-  if (/\b(document|window)\s*\./.test(source))
-    warnings.push(
-      "Browser globals found in the entry. Move browser startup/DOM UI out of the shared scene.",
-    );
-  if (
-    /\b(WebGLRenderer|ShaderMaterial|RawShaderMaterial|EffectComposer|onBeforeCompile)\b/.test(
-      source,
-    )
-  )
-    warnings.push(
-      "WebGL-specific APIs found. Port the renderer/materials/effects to WebGPU/TSL.",
-    );
-  if (!/\bcreateScene\b/.test(source))
-    warnings.push("The entry must export createScene(context).");
-  return warnings;
+  return analyzeProject(config);
 }

@@ -3,6 +3,8 @@ import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { parseArgs } from "node:util";
+import { formatDiagnostic } from "../lib/analyze.mjs";
+import { watchProject } from "../lib/watch.mjs";
 import {
   configName,
   exists,
@@ -16,7 +18,7 @@ import {
 const help = `Three Native — Three.js scenes on native iOS and the web
 
   three-native init [--entry src/native-scene.ts] [--name "My App"] [--bundle-id com.example.app]
-  three-native doctor
+  three-native doctor [--json]
   three-native prepare
   three-native dev web|ios [--simulator UDID] [--port 8081]
   three-native build web|ios
@@ -70,6 +72,7 @@ async function main() {
     options: {
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
+      json: { type: "boolean" },
       entry: { type: "string" },
       name: { type: "string" },
       "bundle-id": { type: "string" },
@@ -112,20 +115,33 @@ async function main() {
   if (!["doctor", "prepare", "dev", "build"].includes(command))
     throw new Error(`Unknown command: ${command}\n${help}`);
   const config = await loadConfig(cwd);
-  if (command === "doctor") {
-    console.log(
-      `Config: ${configName}\nScene: ${path.relative(cwd, config.entry)}\niOS bundle: ${config.ios.bundleIdentifier}\nHost: .three-native/ (generated)\nNode: ${process.version}`,
+  const report = await inspectProject(config);
+  if (values.json && command !== "doctor")
+    throw new Error("--json is only supported by doctor.");
+  if (command === "doctor" && values.json) {
+    const { code: _code, ...summary } = report;
+    console.log(JSON.stringify(summary, null, 2));
+    if (!report.ok) process.exitCode = 1;
+    return;
+  }
+  console.log(
+    `Entry: ${config.entry}\nMode: ${report.mode === "entry" ? "automatic browser entry" : "createScene factory"}\nScanned ${report.files.length} local source file(s).`,
+  );
+  for (const diagnostic of report.diagnostics)
+    console.log(formatDiagnostic(diagnostic));
+  if (!report.ok)
+    throw new Error(
+      "Compatibility check failed. Fix the errors above before generating or building the native host.",
     );
+  if (command === "doctor") {
     if (process.platform === "darwin")
       await run("xcodebuild", ["-version"], cwd);
     else
       console.log(
         "iOS builds need macOS and Xcode. Web builds are available here.",
       );
-    const warnings = await inspectProject(config);
-    for (const warning of warnings) console.log(`Warning: ${warning}`);
     console.log(
-      "Source scanning is advisory. Verify imported modules and the finished app on iOS.",
+      "Source checks passed. Runtime and third-party dependency compatibility still require iOS verification.",
     );
     return;
   }
@@ -135,36 +151,53 @@ async function main() {
     );
   if (platform === "ios" && process.platform !== "darwin")
     throw new Error("Native iOS builds require macOS and Xcode.");
-  const { host, installHash } = await prepareProject(config);
+  const { host, installHash } = await prepareProject(config, report);
   console.log(`Generated ${host}`);
   if (command === "prepare") return;
   await install(host, installHash);
   const expo = path.join(host, "node_modules/expo/bin/cli");
   if (command === "dev") {
-    if (platform === "web")
-      await run(
-        process.execPath,
-        [
-          expo,
-          "start",
-          "--web",
-          "--port",
-          values.port ?? "8081",
-          "--max-workers",
-          "2",
-        ],
-        host,
-      );
-    else
-      await run(
-        process.execPath,
-        [
-          expo,
-          "run:ios",
-          ...(values.simulator ? ["--device", values.simulator] : []),
-        ],
-        host,
-      );
+    const stopWatching = watchProject(config, report, (next, error) => {
+      if (error) console.error(`three-native: ${error.message}`);
+      else {
+        for (const diagnostic of next.diagnostics)
+          if (diagnostic.severity !== "info")
+            console.log(formatDiagnostic(diagnostic));
+        console.log(
+          next.ok
+            ? "Three Native: regenerated entry; Metro will reload."
+            : "Three Native: fix the errors above; keeping the last successful entry.",
+        );
+      }
+    });
+    try {
+      if (platform === "web")
+        await run(
+          process.execPath,
+          [
+            expo,
+            "start",
+            "--web",
+            "--port",
+            values.port ?? "8081",
+            "--max-workers",
+            "2",
+          ],
+          host,
+        );
+      else
+        await run(
+          process.execPath,
+          [
+            expo,
+            "run:ios",
+            ...(values.simulator ? ["--device", values.simulator] : []),
+          ],
+          host,
+        );
+    } finally {
+      stopWatching();
+    }
     return;
   }
   if (platform === "web") {

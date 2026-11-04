@@ -9,6 +9,7 @@ import {
   View,
   type StyleProp,
   type ViewStyle,
+  type GestureResponderEvent,
 } from "react-native";
 import { Canvas, type CanvasRef } from "react-native-webgpu";
 import * as THREE from "three/webgpu";
@@ -17,6 +18,12 @@ export interface SceneContext {
   width: number;
   height: number;
   resolveAsset(module: number | string): Promise<string>;
+  renderer: THREE.WebGPURenderer;
+}
+export interface NativePointerEvent {
+  type: "pointerdown" | "pointermove" | "pointerup" | "pointercancel";
+  x: number;
+  y: number;
 }
 export interface NativeScene {
   scene: THREE.Scene;
@@ -24,6 +31,7 @@ export interface NativeScene {
   update?(deltaSeconds: number, elapsedSeconds: number): void;
   resize?(width: number, height: number): void;
   onPointer?(x: number, y: number): void;
+  onPointerEvent?(event: NativePointerEvent): void;
   dispose?(): void;
 }
 export type SceneFactory<T extends NativeScene = NativeScene> = (
@@ -150,6 +158,7 @@ export function ThreeView<T extends NativeScene>({
       setStatus("Loading scene…");
       const candidate = await createScene({
         ...size.current,
+        renderer,
         resolveAsset: async (module) => {
           const asset = Asset.fromModule(module);
           await asset.downloadAsync();
@@ -229,6 +238,23 @@ export function ThreeView<T extends NativeScene>({
     };
   }, [createScene, laidOut, onReady, onMetrics]);
 
+  const pointer = (
+    type: NativePointerEvent["type"],
+    event: GestureResponderEvent,
+  ) => {
+    if (!size.current.width || !size.current.height) return;
+    const x = event.nativeEvent.locationX / size.current.width;
+    const y = event.nativeEvent.locationY / size.current.height;
+    try {
+      current.current?.onPointerEvent?.({ type, x, y });
+      if (type === "pointerup") current.current?.onPointer?.(x, y);
+    } catch (error) {
+      rendererRef.current?.setAnimationLoop(null);
+      setFailed(true);
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   return (
     <View
       style={[{ flex: 1 }, style]}
@@ -246,13 +272,10 @@ export function ThreeView<T extends NativeScene>({
         setLaidOut(true);
       }}
       onStartShouldSetResponder={() => true}
-      onResponderRelease={({ nativeEvent }) => {
-        if (size.current.width && size.current.height)
-          current.current?.onPointer?.(
-            nativeEvent.locationX / size.current.width,
-            nativeEvent.locationY / size.current.height,
-          );
-      }}
+      onResponderGrant={(event) => pointer("pointerdown", event)}
+      onResponderMove={(event) => pointer("pointermove", event)}
+      onResponderRelease={(event) => pointer("pointerup", event)}
+      onResponderTerminate={(event) => pointer("pointercancel", event)}
       accessibilityLabel="Interactive Three.js scene"
     >
       <Canvas ref={canvas} style={{ flex: 1 }} />

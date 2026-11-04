@@ -8,16 +8,16 @@ An installable CLI and runtime that add a native iOS target to an existing Three
 mkdir -p artifacts
 npm pack ./packages/three-native --pack-destination ./artifacts
 # From your existing Three.js project:
-npm install --save-dev /absolute/path/to/jstxn-three-native-0.1.0.tgz
+npm install --save-dev /absolute/path/to/jstxn-three-native-0.2.0.tgz
 # Bun can install the same tarball with: bun add --dev /absolute/path/to/the.tgz
-npx three-native init --entry ./src/scene.js --name "My App" --bundle-id com.example.myapp
+npx three-native init --entry ./src/main.js --name "My App" --bundle-id com.example.myapp
 npx three-native doctor
 npx three-native dev ios
 npx three-native build ios
 npx three-native preview ios --simulator <UDID>
 ```
 
-The CLI creates `three-native.config.mjs` and builds in `.three-native/`; it leaves the existing browser entry and package configuration intact. Export `createScene(context)` from the selected module, returning a Three.js scene and camera. Optional update, resize, input and disposal callbacks form the runtime contract. See [the package README](packages/three-native/README.md) for the complete API and commands.
+The CLI creates `three-native.config.mjs` and builds in `.three-native/`; it leaves the existing browser entry and package configuration intact. Point it at an ordinary browser entry: supported renderer setup, animation loops, viewport sizing, and pointer input are adapted automatically. `doctor` parses the entry and local imports and reports required changes with file/line locations; blocking issues stop generation and builds. An explicit `createScene(context)` factory remains available for custom integrations. See [the package README](packages/three-native/README.md) for the complete API and commands.
 
 The npm package and Homebrew formula are prepared locally, **not published**. npm and Bun installation checks use the real packed tarball. The Homebrew recipe in `packaging/homebrew/` needs the published release URL before distribution.
 
@@ -65,6 +65,8 @@ The browser must support WebGPU. This proof reports an error instead of silently
 ## Code
 
 - `src/lib/proof-scene.ts`: shared scene construction, picking, updates, and resource disposal. No React Native imports.
+- `packages/three-native/lib/analyze.mjs`: source analysis, actionable diagnostics, and generated browser-entry adapters.
+- `packages/three-native/runtime/BrowserEntry.mjs`: native clock, renderer, viewport, and pointer bridge.
 - `packages/three-native/runtime/ThreeView.tsx`: the reusable canvas, asset resolver, presentation, resizing, and app lifecycle.
 - `src/components/proof-canvas.tsx`: adapts the reference scenes to the same public runtime.
 - `src/app/index.tsx`: shared native/web controls and runtime measurements.
@@ -84,15 +86,15 @@ npm run doctor
 npm run check:package
 ```
 
-The Node suite checks scene geometry, picking, bounded updates after a background gap, model normalization, shared resource disposal, and CLI generation/overwrite protections. It does not substitute for GPU rendering checks on iOS and the browser.
+The Node suite checks scene geometry, picking, resource disposal, CLI overwrite protections, browser-entry execution, animation/resize/input adaptation, OrbitControls, imported-file diagnostics, and source preservation. It does not substitute for GPU rendering checks on iOS and the browser.
 
 ## Verified locally on 2026-11-04
 
 - Node 24.15.0, Expo 57.0.31, React Native 0.86.3, Three.js 0.186.0, React Native WebGPU 0.21.1.
 - Xcode 27.2, iPhone 18 Pro Simulator with iOS 27.2, Release builds.
-- Nine scene/CLI tests, lint, type checking, and Expo Doctor (21/21 checks).
-- Real tarball installation through both npm and Bun; config and host generation preserve the existing scene.
-- Both the reference app and the CLI-generated vanilla app build and render natively.
+- Twenty scene/compiler/CLI tests, lint, type checking, and Expo Doctor (21/21 checks on the original native stack).
+- Real tarball installation through both npm and Bun; config and host generation preserve the existing source.
+- Both the reference app and the CLI-generated vanilla app build and render natively. The vanilla config now points directly to its existing `src/main.js` browser entry, including WebGLRenderer, DOM mounting, a render loop, and pointer input; no manual scene-factory adaptation is required.
 - Reference GLB rendering, three model reloads, native scene changes from browser input, and background/resume through the browser's Home control.
 - Browser WebGPU export, model loading, pause/finish controls, narrow layout, and a final run with no browser console errors.
 
