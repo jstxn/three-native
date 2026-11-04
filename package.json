@@ -2,9 +2,6 @@
   "name": "three-native-poc",
   "version": "1.0.0",
   "private": true,
-  "installConfig": {
-    "hoistingLimits": "workspaces"
-  },
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
@@ -13,20 +10,26 @@
     "web": "expo start --web",
     "prebuild": "expo prebuild",
     "prebuild:clean": "expo prebuild --clean",
-    "expo": "expo",
     "expo:install": "expo install",
     "doctor": "npx expo-doctor",
     "build:web": "expo export --platform web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "expo lint",
+    "test": "node --experimental-strip-types --test tests/*.test.ts packages/three-native/test/*.test.mjs",
+    "preview:ios": "bash scripts/preview-ios.sh",
+    "check:package": "node scripts/check-package.mjs"
   },
   "dependencies": {
-    "@react-three/fiber": "^9.4.0",
     "expo": "^57.0.1",
+    "expo-asset": "~57.0.20",
+    "expo-build-properties": "~57.0.22",
     "expo-constants": "~57.0.2",
+    "expo-device": "~57.0.2",
     "expo-linking": "~57.0.1",
     "expo-router": "~57.0.2",
     "expo-splash-screen": "~57.0.1",
     "expo-status-bar": "~57.0.0",
+    "fast-text-encoding": "^1.0.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
@@ -34,13 +37,15 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-web": "^0.21.0",
-    "react-native-webgpu": "~0.8.5",
+    "react-native-webgpu": "0.21.1",
     "react-native-worklets": "0.10.1",
-    "three": "0.172.0"
+    "three": "0.186.0"
   },
   "devDependencies": {
     "@types/react": "~19.2.14",
-    "@types/three": "0.172.0",
-    "typescript": "~6.0.3"
+    "@types/three": "0.186.0",
+    "typescript": "~6.0.3",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "~57.0.2"
   }
 }

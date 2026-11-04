@@ -1,0 +1,37 @@
+{
+  "name": "@jstxn/three-native",
+  "version": "0.1.0",
+  "description": "Run existing Three.js scenes on iOS and the web with a generated native host.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "bin": {
+    "three-native": "bin/three-native.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/config.mjs"
+    },
+    "./runtime": {
+      "types": "./runtime/ThreeView.tsx",
+      "default": "./runtime/ThreeView.tsx"
+    }
+  },
+  "files": [
+    "bin",
+    "lib",
+    "runtime",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check bin/three-native.mjs && node --check lib/project.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
