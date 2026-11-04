@@ -43,3 +43,8 @@ app-example
 /artifacts/
 
 .three-native/
+
+# Local editor and agent settings
+/.claude/
+/.cursor/
+/.windsurf/
