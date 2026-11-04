@@ -8,6 +8,9 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
-    "packages/three-native/runtime/**/*.tsx"
+    "packages/three-native/runtime/**/*.tsx",
+    "packages/three-native/runtime/**/*.ts",
+    "packages/three-native/**/*.d.ts",
+    "packages/three-native/**/*.d.mts"
   ]
 }

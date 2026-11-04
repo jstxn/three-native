@@ -1,5 +1,7 @@
 # Three Native
 
+[![CI](https://github.com/jstxn/three-native/actions/workflows/ci.yml/badge.svg)](https://github.com/jstxn/three-native/actions/workflows/ci.yml)
+
 An installable CLI and runtime that add a native iOS target to an existing Three.js project. The package lives in `packages/three-native/`; `examples/vanilla/` is an existing Vite + Three.js consumer. The root app is the visual native/browser reference demo.
 
 ## See it running
@@ -101,6 +103,15 @@ The project began with the [upstream Expo WebGPU template](https://github.com/wc
 
 ## Checks
 
+Run the repository quality gates before sending a change:
+
+```sh
+npm ci
+npm run check
+```
+
+Individual checks:
+
 ```sh
 npm test
 npm run typecheck
@@ -108,6 +119,8 @@ npm run lint
 npm run doctor
 npm run check:package
 ```
+
+The [CI workflow](.github/workflows/ci.yml) runs on pull requests and pushes to `main`. On Node 24 it checks lint (including CLI and test files), app and test types, the unit/integration suite, the browser build, and real tarball installs through npm and Bun. It also runs the tests on the minimum supported Node 22.18. Tests use two workers; native signing, device automation, and GPU acceptance remain separate hardware checks. These are repository contributor checks and are not copied into generated adopter projects.
 
 The Node suite checks scene geometry, picking, resource disposal, CLI overwrite protections, browser-entry execution, animation/resize/input adaptation, OrbitControls, imported-file diagnostics, and source preservation. It does not substitute for GPU rendering checks on iOS and the browser.
 

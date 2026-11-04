@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+} from "react";
 import type { DevicePreviewProps } from "./DevicePreview";
 import {
   defaultDevice,
@@ -9,6 +15,9 @@ import {
 } from "./devices.mjs";
 
 const embedKey = "__three_native_viewport";
+const subscribeToLocation = () => () => {};
+const getLocation = () => window.location.href;
+const getServerLocation = () => "";
 const control: CSSProperties = {
   font: "inherit",
   color: "#183548",
@@ -25,23 +34,24 @@ export function DevicePreview({
   orientation = "portrait",
   simulatorUrl,
 }: DevicePreviewProps) {
-  const [mode, setMode] = useState<"loading" | "embed" | "preview">("loading");
-  const [source, setSource] = useState("");
+  const href = useSyncExternalStore(
+    subscribeToLocation,
+    getLocation,
+    getServerLocation,
+  );
+  const url = href ? new URL(href) : null;
+  const mode = !url
+    ? "loading"
+    : url.searchParams.get(embedKey) === "1"
+      ? "embed"
+      : "preview";
+  url?.searchParams.set(embedKey, "1");
+  const source = url?.href;
   const [selected, setSelected] = useState(device);
   const [direction, setDirection] = useState(orientation);
   const [actualSize, setActualSize] = useState(false);
   const [space, setSpace] = useState({ width: 0, height: 0 });
   const area = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    if (url.searchParams.get(embedKey) === "1") {
-      setMode("embed");
-      return;
-    }
-    url.searchParams.set(embedKey, "1");
-    setSource(url.href);
-    setMode("preview");
-  }, []);
   useEffect(() => {
     if (mode !== "preview" || !area.current) return;
     const element = area.current;

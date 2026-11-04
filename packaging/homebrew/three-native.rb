@@ -2,7 +2,7 @@ class ThreeNative < Formula
   desc "Build Three.js scenes for native iOS and the web"
   homepage "https://github.com/jstxn/three-native"
   url "https://registry.npmjs.org/@jstxn/three-native/-/three-native-0.4.0.tgz"
-  sha256 "5482a92ac6ab3f000ca9acaef5c2cd9306c03386b43819054117dd845d4ea559"
+  sha256 "10c009ae5af087f7f80c98d337ca4c297bbb25de02f665f3c00a08586823a881"
   license "MIT"
   depends_on "node"
 

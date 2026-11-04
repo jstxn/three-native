@@ -33,7 +33,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test --test-concurrency=2 test/*.test.mjs",
     "check": "node --check bin/three-native.mjs && node --check lib/project.mjs && node --check lib/analyze.mjs && node --check lib/watch.mjs && node --check runtime/BrowserEntry.mjs && node --check lib/tooling.mjs && node --check runtime/native-core.mjs && node --check runtime/devices.mjs && node --check lib/automation.mjs && node --check lib/automation-mcp.mjs"
   },
   "publishConfig": {
