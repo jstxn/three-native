@@ -10,7 +10,7 @@ npx three-native doctor
 npx three-native dev ios
 ```
 
-The registry commands become available after publication. For this unpublished alpha, install the `jstxn-three-native-0.2.0.tgz` produced by `npm pack` instead. Node 22.18+ is required. iOS builds need macOS and Xcode. The CLI uses npm to install the generated host's pinned dependencies even when installed through Bun.
+The registry commands become available after publication. For this unpublished alpha, install the `jstxn-three-native-0.3.0.tgz` produced by `npm pack` instead. Node 22.18+ is required. iOS builds need macOS and Xcode. The CLI uses npm to install the generated host's pinned dependencies even when installed through Bun.
 
 ## Point at your existing entry
 
@@ -22,6 +22,7 @@ export default defineConfig({
   entry: "./src/main.js",
   name: "My Game",
   ios: { bundleIdentifier: "com.example.mygame" },
+  preview: { device: "iphone-18-pro", orientation: "portrait" },
 });
 ```
 
@@ -140,19 +141,100 @@ export async function createScene({ resolveAsset }) {
 
 Three.js FileLoader wraps progress streams in a Response, which is not portable to React Native's response implementation. Use self-contained `.glb` files with embedded textures. External `.gltf` resources, Draco, and KTX2 are not validated by this alpha.
 
+## Device-sized browser preview
+
+`dev web` and `build web` wrap the app in a device picker. Choose a real iPhone/iPad preset, rotate it, or view it at 100%. The app receives the selected logical screen dimensions even when the preview is scaled to fit your browser. Selection changes preserve app state. This is responsive layout testing; safe areas, hardware, and performance still need the native app. See the [preset sources and limits](https://github.com/jstxn/three-native/blob/main/docs/device-presets.md).
+
+## Use native device features
+
+No React component is required in your game code:
+
+```js
+import { native, NativeFeatureError } from "@jstxn/three-native/native";
+
+console.log(native.info()); // environment: device | simulator | browser
+
+// Call from your own input handler. Always handle permissions/unavailability.
+async function onHit() {
+  try {
+    await native.haptics.impact("light");
+  } catch (error) {
+    if (!(error instanceof NativeFeatureError)) throw error;
+    console.log(error.code, error.message);
+  }
+}
+```
+
+| API                                                              | Result                                                                                                       |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `native.haptics.impact('light')`                                 | Requests physical iOS haptic feedback; also accepts medium, heavy, soft, rigid                               |
+| `await native.motion.watch(({x,y,z}) => ..., {intervalMs: 100})` | Accelerometer values in g; returns a stop function you must call on scene disposal; pauses in the background |
+| `await native.location.current()`                                | Location with coordinates, timestamp, and source set to device or simulator                                  |
+| `await native.camera.capture()`                                  | Opens the native camera; returns an image asset (`uri`, `width`, `height`) or `null` on cancellation         |
+
+The host includes Expo's native modules and permission descriptions automatically. Camera, motion, and haptics require physical hardware. Location can use a Simulator location. Browser calls reject with `NativeFeatureError` (`unavailable`); a selected iPhone preview never borrows your computer's camera or pretends to be hardware. Denied permissions use `permission-denied`. iOS may suppress haptics even when the call completes. Current location needs enabled location services and may take time to obtain a fix.
+
+## Connect developer tools
+
+```sh
+npx three-native devices
+npx three-native dev ios --device YOUR_DEVICE_UDID
+# Or build/run on a Simulator:
+npx three-native dev ios --simulator YOUR_SIMULATOR_UDID
+
+# After generating the iOS workspace:
+npx three-native mcp --simulator YOUR_SIMULATOR_UDID
+# CLI access to the same upstream tools:
+npx three-native tools simulator snapshot-ui --output json
+npx three-native tools ui-automation touch --element-ref REF_FROM_SNAPSHOT --down --up --delay 0.15
+npx three-native tools simulator screenshot --return-format path
+```
+
+`mcp` starts the pinned XcodeBuildMCP 2.7.0 stdio server with this project's workspace, scheme, bundle ID, and target. For a physical target, use `mcp --device YOUR_DEVICE_UDID`. Register that command with `--project /absolute/project` in your MCP client. No global client configuration is edited. Settings are generated in `.three-native/.xcodebuildmcp/config.yaml`; these select defaults, not an authorization sandbox. Upstream tools can operate other targets explicitly requested by the client.
+
+For example, a client that accepts `mcpServers` configuration can use an absolute installed CLI path:
+
+```json
+{
+  "mcpServers": {
+    "three-native": {
+      "command": "/absolute/project/node_modules/.bin/three-native",
+      "args": [
+        "mcp",
+        "--project",
+        "/absolute/project",
+        "--simulator",
+        "YOUR_SIMULATOR_UDID"
+      ]
+    }
+  }
+}
+```
+
+The verified press path is `touch` with down/up and a short delay. Upstream semantic `tap` reported success without activating controls in this Simulator; use `touch` and verify the resulting screen. Refresh the snapshot after scrolling or changing screens.
+
+The first tooling invocation downloads the pinned upstream package through npm. MCP telemetry is disabled for this child process. Simulator tools support input, snapshots, screenshots, build/install/launch, and log capture. Physical tools support build/install/launch/test; **physical UI automation is not supplied by this integration**. Use the device itself to interact with the game and grant permissions.
+
+Physical deployment needs device trust, Developer Mode, and signing. Set `ios.appleTeamId` to your 10-character team ID if needed; it is passed to Expo's generated Xcode project. The CLI cannot provision an Apple account for you. For physical stdout, `three-native logs ios --device YOUR_DEVICE_UDID --restart` explicitly restarts the app and streams its console output. Simulator launch tools report a captured log file. [Verified upstream capabilities](https://github.com/jstxn/three-native/blob/main/docs/native-device-research.md).
+
 ## Commands
 
-| Command                        | Result                                                                 |
-| ------------------------------ | ---------------------------------------------------------------------- |
-| `init --entry ./src/main.js`   | Add config for an existing browser entry or scene factory              |
-| `init`                         | Add config and a small scene skeleton                                  |
-| `doctor [--json]`              | Analyze the entry and relative imports; explain required changes       |
-| `prepare`                      | Check compatibility and generate the host without installing/compiling |
-| `dev web`                      | Run the adapted scene in a browser with Metro reload                   |
-| `dev ios --simulator UDID`     | Build/run the iOS development host                                     |
-| `build web`                    | Export to `.three-native/dist`                                         |
-| `build ios`                    | Build a Release Simulator `.app` in `.three-native/build`              |
-| `preview ios --simulator UDID` | Stream/control that Simulator at localhost:8087                        |
+| Command                                                   | Result                                                                 |
+| --------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `init --entry ./src/main.js`                              | Add config for an existing browser entry or scene factory              |
+| `init`                                                    | Add config and a small scene skeleton                                  |
+| `doctor [--json]`                                         | Analyze the entry and relative imports; explain required changes       |
+| `prepare`                                                 | Check compatibility and generate the host without installing/compiling |
+| `dev web`                                                 | Run the adapted scene in a browser with Metro reload                   |
+| `dev ios --simulator UDID`                                | Build/run the iOS development host                                     |
+| `dev ios --device UDID`                                   | Build/run on a trusted, signed physical device                         |
+| `devices [--json]`                                        | List installed Simulators and physical-device connection states        |
+| `mcp [--project PATH] [--simulator UDID] [--device UDID]` | Start the project-configured MCP server with one optional target       |
+| `tools <workflow> <command>`                              | Run an upstream device/Simulator tool                                  |
+| `logs ios --device UDID --restart`                        | Restart a physical app and stream stdout                               |
+| `build web`                                               | Export to `.three-native/dist`                                         |
+| `build ios`                                               | Build a Release Simulator `.app` in `.three-native/build`              |
+| `preview ios --simulator UDID`                            | Stream/control that Simulator at localhost:8087                        |
 
 `--port` selects a web dev or simulator preview port. Native compilation and Metro export use two workers. Generated files can be recreated by removing `.three-native/`; existing source and package.json are preserved.
 
@@ -162,4 +244,4 @@ The host pins Three.js 0.186.0. Three.js 0.187.0 requires WeakRef and Finalizati
 
 Metro/Babel processes JavaScript and TypeScript; React Native packages Hermes bytecode; Xcode compiles the host; WebGPU runs through Dawn and Metal. This is not a general JavaScript-to-Swift or GLSL-to-Metal compiler. Arbitrary DOM UI, custom shaders, multiple renderers, delayed startup, and third-party packages may need an explicit adapter.
 
-The target is an iOS Simulator release and local browser stream. Physical-device signing, TestFlight/App Store submission, public session hosting, Android, and general React Three Fiber compatibility are not part of this alpha.
+The release build command targets iOS Simulator. Physical development deployment is supported when the user supplies signing and a trusted device, but remains unverified on physical hardware in this proof. TestFlight/App Store submission, public session hosting, Android, and general React Three Fiber compatibility are outside this alpha.

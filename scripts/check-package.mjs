@@ -3,8 +3,9 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 const tarball = path.resolve(
-  process.argv[2] ?? "artifacts/jstxn-three-native-0.2.0.tgz",
+  process.argv[2] ?? "artifacts/jstxn-three-native-0.3.0.tgz",
 );
 for (const manager of ["npm", "bun"]) {
   const root = await mkdtemp(path.join(tmpdir(), `three-native-${manager}-`));
@@ -28,10 +29,40 @@ for (const manager of ["npm", "bun"]) {
         : ["add", "--dev", tarball],
       { cwd: root, stdio: "pipe" },
     );
+    execFileSync(
+      process.execPath,
+      [
+        "--input-type=module",
+        "-e",
+        "import { native } from '@jstxn/three-native/native'; if (native.info().environment !== 'browser') throw Error('Invalid default runtime'); try { await native.camera.capture(); throw Error('Camera should be unavailable'); } catch(e) { if(e.code !== 'unavailable') throw e; }",
+      ],
+      { cwd: root, stdio: "pipe" },
+    );
+    await writeFile(
+      path.join(root, "native-client.mts"),
+      "import { native, NativeFeatureError } from '@jstxn/three-native/native';\nconst stop = await native.motion.watch(({ x, y, z }) => console.log(x, y, z)); stop();\nconst image = await native.camera.capture(); console.log(image?.uri);\nnew NativeFeatureError('unavailable', 'No hardware');\n",
+    );
+    execFileSync(
+      process.execPath,
+      [
+        fileURLToPath(
+          new URL("../node_modules/typescript/bin/tsc", import.meta.url),
+        ),
+        "--noEmit",
+        "--strict",
+        "--skipLibCheck",
+        "--module",
+        "nodenext",
+        "--target",
+        "es2022",
+        "native-client.mts",
+      ],
+      { cwd: root, stdio: "pipe" },
+    );
     const cli = path.join(root, "node_modules/.bin/three-native");
     assert.equal(
       execFileSync(cli, ["--version"], { cwd: root, encoding: "utf8" }).trim(),
-      "0.2.0",
+      "0.3.0",
     );
     execFileSync(cli, ["init", "--entry", "src/scene.js"], {
       cwd: root,

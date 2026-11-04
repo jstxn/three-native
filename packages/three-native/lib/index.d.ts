@@ -3,8 +3,9 @@ import type { WebGPURenderer } from "three/webgpu";
 export interface ThreeNativeConfig {
   entry: string;
   name?: string;
-  ios?: { bundleIdentifier?: string };
+  ios?: { bundleIdentifier?: string; appleTeamId?: string };
   assets?: string[];
+  preview?: { device?: string; orientation?: "portrait" | "landscape" };
 }
 export function defineConfig(config: ThreeNativeConfig): ThreeNativeConfig;
 export interface SceneContext {

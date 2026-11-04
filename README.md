@@ -17,7 +17,7 @@ npm ci
 mkdir -p artifacts
 npm pack ./packages/three-native --pack-destination ./artifacts
 # From your existing Three.js project:
-npm install --save-dev /absolute/path/to/jstxn-three-native-0.2.0.tgz
+npm install --save-dev /absolute/path/to/jstxn-three-native-0.3.0.tgz
 # Bun can install the same tarball with: bun add --dev /absolute/path/to/the.tgz
 npx three-native init --entry ./src/main.js --name "My App" --bundle-id com.example.myapp
 npx three-native doctor
@@ -29,6 +29,14 @@ npx three-native preview ios --simulator <UDID>
 The CLI creates `three-native.config.mjs` and builds in `.three-native/`; it leaves the existing browser entry and package configuration intact. Point it at an ordinary browser entry: supported renderer setup, animation loops, viewport sizing, and pointer input are adapted automatically. `doctor` parses the entry and local imports and reports required changes with file/line locations; blocking issues stop generation and builds. An explicit `createScene(context)` factory remains available for custom integrations. See [the package README](packages/three-native/README.md) for the complete API and commands.
 
 The npm package and Homebrew formula are prepared locally, **not published**. npm and Bun installation checks use the real packed tarball. The Homebrew recipe in `packaging/homebrew/` needs the published release URL before distribution.
+
+## Device previews and native features
+
+The browser build now includes a dropdown of 13 real iPhone/iPad sizes, portrait/landscape rotation, and fit/100% viewing. The app keeps its selected logical viewport and state while the outer preview scales. [Device sizes and Apple sources](docs/device-presets.md).
+
+Game code can import `native` from `@jstxn/three-native/native` to use haptics, accelerometer motion, camera capture, and foreground location. The generated host installs the modules and permission descriptions. The reference app includes a device-feature panel. Browser and Simulator limitations are explicit; selecting a model does not manufacture hardware.
+
+`three-native devices`, `dev ios --device UDID`, `mcp`, and `tools` connect project-specific development to XcodeBuildMCP. Physical build/install/launch and Simulator input/snapshots are supported by the upstream tools. Physical UI automation is not included. [Adopter guide and commands](packages/three-native/README.md#use-native-device-features), [verified native/tooling research](docs/native-device-research.md).
 
 ## Reference demo
 
@@ -101,16 +109,17 @@ The Node suite checks scene geometry, picking, resource disposal, CLI overwrite 
 
 - Node 24.15.0, Expo 57.0.31, React Native 0.86.3, Three.js 0.186.0, React Native WebGPU 0.21.1.
 - Xcode 27.2, iPhone 18 Pro Simulator with iOS 27.2, Release builds.
-- Twenty scene/compiler/CLI tests, lint, type checking, and Expo Doctor (21/21 checks on the original native stack).
+- 33 scene/compiler/CLI/native-capability tests, lint, type checking, and Expo Doctor (21/21 checks with the native feature modules).
 - Real tarball installation through both npm and Bun; config and host generation preserve the existing source.
-- Both the reference app and the CLI-generated vanilla app build and render natively. The vanilla config now points directly to its existing `src/main.js` browser entry, including WebGLRenderer, DOM mounting, a render loop, and pointer input; no manual scene-factory adaptation is required.
+- The reference app builds and renders with the native feature modules. The CLI-generated vanilla app also previously built and rendered natively; its updated native API import passes iOS bundle generation. The vanilla config now points directly to its existing `src/main.js` browser entry, including WebGLRenderer, DOM mounting, a render loop, and pointer input; no manual scene-factory adaptation is required.
 - Reference GLB rendering, three model reloads, native scene changes from browser input, and background/resume through the browser's Home control.
-- Browser WebGPU export, model loading, pause/finish controls, narrow layout, and a final run with no browser console errors.
+- Browser WebGPU export, model loading, pause/finish controls, and narrow layout. All 13 device viewports and orientation/state preservation were checked.
+- MCP initialization exposes 44 tools; device discovery, Simulator scrolling, touch down/up, the location permission prompt, and simulated coordinates were exercised. Semantic `tap` needs the documented touch workaround in this environment.
 
 The initial native checks caught two version/configuration requirements now owned by the toolkit: Expo's scene lifecycle opt-in for iOS 27, and Three r186 rather than r187 on this Hermes runtime. GLB samples parse fetched bytes directly to avoid the native `FileLoader` progress-stream incompatibility.
 
 ## Boundaries
 
-This is a local demonstration, not a public device cloud. Public interactive simulator sessions need a hosted Mac, authentication, session isolation, and streaming capacity. A simulator stream is not a physical iPhone stream. Physical-device performance, signing/distribution, Android, arbitrary third-party Three plugins, and App Store acceptance are not established by this proof.
+This is a local demonstration, not a public device cloud. Public interactive simulator sessions need a hosted Mac, authentication, session isolation, and streaming capacity. A simulator stream is not a physical iPhone stream. Physical-device API behavior, performance, signing/distribution, Android, arbitrary third-party Three plugins, and App Store acceptance are not established by this proof. A physical iPhone was listed but unavailable during this work.
 
 The [Avocado model](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/Avocado) is by Microsoft, distributed under CC0. Its source attribution is retained in `assets/models/Avocado-source.md`.

@@ -12,10 +12,20 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { NativeFeaturesPanel } from "../components/native-features";
 import { ProofCanvas, type Metrics } from "../components/proof-canvas";
 import type { Sample } from "../lib/proof-scene";
+import { DevicePreview } from "../../packages/three-native/runtime/DevicePreview";
 
 export default function Home() {
+  return (
+    <DevicePreview simulatorUrl={process.env.EXPO_PUBLIC_SIMULATOR_URL}>
+      <Demo />
+    </DevicePreview>
+  );
+}
+
+function Demo() {
   const wide = useWindowDimensions().width >= 900;
   const [sample, setSample] = useState<Sample>("sculpture");
   const [paused, setPaused] = useState(false);
@@ -152,6 +162,7 @@ export default function Home() {
                 }}
               />
             )}
+            <NativeFeaturesPanel />
             <Text style={styles.footnote}>
               FPS is measured in this runtime, not a physical-device benchmark.
               Model: Microsoft / Khronos, CC0.

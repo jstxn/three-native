@@ -4,6 +4,12 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { parseArgs } from "node:util";
 import { formatDiagnostic } from "../lib/analyze.mjs";
+import {
+  configureTooling,
+  listDevices,
+  toolingPackage,
+  validateTarget,
+} from "../lib/tooling.mjs";
 import { watchProject } from "../lib/watch.mjs";
 import {
   configName,
@@ -20,7 +26,11 @@ const help = `Three Native — Three.js scenes on native iOS and the web
   three-native init [--entry src/native-scene.ts] [--name "My App"] [--bundle-id com.example.app]
   three-native doctor [--json]
   three-native prepare
-  three-native dev web|ios [--simulator UDID] [--port 8081]
+  three-native dev web|ios [--simulator UDID | --device UDID] [--port 8081]
+  three-native devices [--json]
+  three-native mcp [--project PATH] [--simulator UDID | --device UDID]
+  three-native tools <workflow> <command> [upstream options]
+  three-native logs ios --device UDID --restart
   three-native build web|ios
   three-native preview ios --simulator UDID [--port 8087]
 
@@ -36,6 +46,7 @@ function run(command, args, cwd) {
         ...process.env,
         CMAKE_BUILD_PARALLEL_LEVEL: "2",
         MAKEFLAGS: "-j2",
+        XCODEBUILDMCP_SENTRY_DISABLED: "true",
       },
     });
     const forward = (signal) => child.kill(signal);
@@ -67,6 +78,16 @@ async function install(host, hash) {
   await writeFile(marker, hash);
 }
 async function main() {
+  if (process.argv[2] === "tools") {
+    const args = process.argv.slice(process.argv[3] === "--" ? 4 : 3);
+    if (!args.length)
+      throw new Error(
+        "Use three-native tools <workflow> <command>, for example: tools simulator snapshot-ui.",
+      );
+    const { host } = await configureTooling(await loadConfig(process.cwd()));
+    await run("npx", ["--yes", toolingPackage, ...args], host);
+    return;
+  }
   const { values, positionals } = parseArgs({
     allowPositionals: true,
     options: {
@@ -77,6 +98,9 @@ async function main() {
       name: { type: "string" },
       "bundle-id": { type: "string" },
       simulator: { type: "string" },
+      device: { type: "string" },
+      project: { type: "string" },
+      restart: { type: "boolean" },
       port: { type: "string" },
     },
   });
@@ -92,7 +116,55 @@ async function main() {
     return;
   }
   const [command, platform] = positionals;
-  const cwd = process.cwd();
+  const cwd = path.resolve(values.project ?? process.cwd());
+  validateTarget(values);
+  if (command === "devices") {
+    if (process.platform !== "darwin")
+      throw new Error("iOS device discovery requires macOS and Xcode.");
+    const devices = await listDevices();
+    if (values.json) console.log(JSON.stringify(devices, null, 2));
+    else {
+      for (const [kind, entries] of [
+        ["Simulator", devices.simulators],
+        ["Physical", devices.devices],
+      ]) {
+        for (const entry of entries)
+          console.log(`${kind}  ${entry.id}  ${entry.name}  (${entry.state})`);
+      }
+      for (const warning of devices.warnings) console.error(warning);
+    }
+    return;
+  }
+  if (command === "mcp" || command === "logs") {
+    if (process.platform !== "darwin")
+      throw new Error("iOS tooling requires macOS and Xcode.");
+    const config = await loadConfig(cwd);
+    if (command === "logs") {
+      if (platform !== "ios" || !values.device || !values.restart)
+        throw new Error(
+          "Use three-native logs ios --device UDID --restart. This restarts the app and streams its stdout.",
+        );
+      await run(
+        "xcrun",
+        [
+          "devicectl",
+          "device",
+          "process",
+          "launch",
+          "--device",
+          values.device,
+          "--console",
+          "--terminate-existing",
+          config.ios.bundleIdentifier,
+        ],
+        cwd,
+      );
+    } else {
+      const { host } = await configureTooling(config, values);
+      await run("npx", ["--yes", toolingPackage, "mcp"], host);
+    }
+    return;
+  }
   if (command === "init") {
     console.log(
       `Created ${await initProject(cwd, values)}\nNext: three-native doctor`,
@@ -191,7 +263,10 @@ async function main() {
           [
             expo,
             "run:ios",
-            ...(values.simulator ? ["--device", values.simulator] : []),
+            ...(values.simulator || values.device
+              ? ["--device", values.simulator ?? values.device]
+              : []),
+            ...(values.port ? ["--port", values.port] : []),
           ],
           host,
         );

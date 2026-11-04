@@ -3,11 +3,18 @@ import { access, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { analyzeProject, formatDiagnostic } from "./analyze.mjs";
+import { defaultDevice, deviceViewport } from "../runtime/devices.mjs";
 
 export const packageRoot = fileURLToPath(new URL("../", import.meta.url));
 export const configName = "three-native.config.mjs";
+let configGeneration = 0;
 export const hostDependencies = {
   expo: "57.0.31",
+  "expo-device": "57.0.2",
+  "expo-haptics": "57.0.3",
+  "expo-sensors": "57.0.3",
+  "expo-location": "57.0.22",
+  "expo-image-picker": "57.0.20",
   "expo-asset": "57.0.20",
   "expo-build-properties": "57.0.22",
   "fast-text-encoding": "1.0.6",
@@ -47,7 +54,9 @@ export async function loadConfig(root) {
   if (!(await exists(filename)))
     throw new Error(`Missing ${configName}. Run three-native init first.`);
   const declared = (
-    await import(`${pathToFileURL(filename).href}?t=${Date.now()}`)
+    await import(
+      `${pathToFileURL(filename).href}?t=${Date.now()}-${configGeneration++}`
+    )
   ).default;
   if (!declared || typeof declared !== "object" || Array.isArray(declared))
     throw new Error(`${configName} must export a default config object.`);
@@ -64,6 +73,14 @@ export async function loadConfig(root) {
     ios: { bundleIdentifier: "com.example.threenative", ...declared.ios },
   };
   if (
+    config.ios.appleTeamId !== undefined &&
+    (typeof config.ios.appleTeamId !== "string" ||
+      !/^[A-Z0-9]{10}$/.test(config.ios.appleTeamId))
+  )
+    throw new Error(
+      "ios.appleTeamId must be your 10-character Apple development team ID.",
+    );
+  if (
     typeof config.name !== "string" ||
     !config.name.trim() ||
     !/[a-zA-Z]/.test(config.name)
@@ -77,6 +94,19 @@ export async function loadConfig(root) {
     throw new Error(
       "ios.bundleIdentifier must be a reverse-domain identifier such as com.example.myapp.",
     );
+  if (
+    declared.preview !== undefined &&
+    (!declared.preview ||
+      typeof declared.preview !== "object" ||
+      Array.isArray(declared.preview))
+  )
+    throw new Error("preview must be a configuration object.");
+  const preview = {
+    device: defaultDevice,
+    orientation: "portrait",
+    ...declared.preview,
+  };
+  deviceViewport(preview.device, preview.orientation);
   const entry = inside(root, config.entry, "entry");
   if (!(await exists(entry)))
     throw new Error(`Scene entry does not exist: ${config.entry}`);
@@ -88,7 +118,7 @@ export async function loadConfig(root) {
   for (const asset of assets)
     if (!(await exists(asset)))
       throw new Error(`Asset does not exist: ${path.relative(root, asset)}`);
-  return { root, entry, assets, name: config.name, ios: config.ios };
+  return { root, entry, assets, name: config.name, ios: config.ios, preview };
 }
 export async function initProject(root, options = {}) {
   root = path.resolve(root);
@@ -142,6 +172,14 @@ export async function prepareProject(config, report) {
     "scene.ts",
     "ThreeView.tsx",
     "BrowserEntry.mjs",
+    "DevicePreview.tsx",
+    "DevicePreview.web.tsx",
+    "devices.mjs",
+    "devices.d.mts",
+    "native.ts",
+    "native.web.mjs",
+    "native-core.mjs",
+    "native-core.d.mts",
     "metro.config.js",
   ]) {
     try {
@@ -171,11 +209,36 @@ export async function prepareProject(config, report) {
     orientation: "default",
     ios: {
       bundleIdentifier: config.ios.bundleIdentifier,
+      ...(config.ios.appleTeamId
+        ? { appleTeamId: config.ios.appleTeamId }
+        : {}),
       supportsTablet: true,
     },
     plugins: [
       ["expo-build-properties", { ios: { enableSceneSupport: true } }],
       "react-native-webgpu",
+      [
+        "expo-sensors",
+        {
+          motionPermission:
+            "Allow $(PRODUCT_NAME) to use motion for interactive scenes.",
+        },
+      ],
+      [
+        "expo-location",
+        {
+          locationWhenInUsePermission:
+            "Allow $(PRODUCT_NAME) to use your location when you request it.",
+        },
+      ],
+      [
+        "expo-image-picker",
+        {
+          cameraPermission:
+            "Allow $(PRODUCT_NAME) to take a photo when you request it.",
+          microphonePermission: false,
+        },
+      ],
       [
         "expo-asset",
         { assets: config.assets.map((asset) => path.relative(host, asset)) },
@@ -193,7 +256,7 @@ export async function prepareProject(config, report) {
   );
   await writeFile(
     path.join(host, "App.tsx"),
-    `import React from 'react';\nimport { StatusBar, View } from 'react-native';\nimport { ThreeView } from './ThreeView';\nimport { createScene } from './scene';\nexport default function App() { return <View style={{ flex: 1 }}><StatusBar hidden /><ThreeView createScene={createScene} style={{ flex: 1 }} /></View>; }\n`,
+    `import React from 'react';\nimport { StatusBar, View } from 'react-native';\nimport { ThreeView } from './ThreeView';\nimport { DevicePreview } from './DevicePreview';\nimport { createScene } from './scene';\nexport default function App() { return <DevicePreview device={${JSON.stringify(config.preview.device)}} orientation={${JSON.stringify(config.preview.orientation)}}><View style={{ flex: 1 }}><StatusBar hidden /><ThreeView createScene={createScene} style={{ flex: 1 }} /></View></DevicePreview>; }\n`,
   );
   let relative = path.relative(host, config.entry).split(path.sep).join("/");
   if (!relative.startsWith(".")) relative = "./" + relative;
@@ -211,9 +274,24 @@ export async function prepareProject(config, report) {
     path.join(host, "BrowserEntry.mjs"),
     await readFile(path.join(packageRoot, "runtime/BrowserEntry.mjs")),
   );
+  for (const file of [
+    "DevicePreview.tsx",
+    "DevicePreview.web.tsx",
+    "devices.mjs",
+    "devices.d.mts",
+    "native.ts",
+    "native.web.mjs",
+    "native-core.mjs",
+    "native-core.d.mts",
+  ]) {
+    await writeFile(
+      path.join(host, file),
+      await readFile(path.join(packageRoot, "runtime", file)),
+    );
+  }
   await writeFile(
     path.join(host, "metro.config.js"),
-    `const path = require('node:path');\nconst { getDefaultConfig } = require('expo/metro-config');\nconst config = getDefaultConfig(__dirname);\nconfig.watchFolders = [path.resolve(__dirname, '..')];\nconfig.resolver.nodeModulesPaths = [path.join(__dirname, 'node_modules'), path.resolve(__dirname, '../node_modules')];\nconfig.resolver.assetExts.push('glb', 'gltf', 'bin', 'hdr');\nconfig.resolver.resolveRequest = (context, name, platform) => {\n  if (name === 'three' || name === 'three/webgpu') return { filePath: require.resolve('three/webgpu'), type: 'sourceFile' };\n  return context.resolveRequest(context, name, platform);\n};\nmodule.exports = config;\n`,
+    `const path = require('node:path');\nconst { getDefaultConfig } = require('expo/metro-config');\nconst config = getDefaultConfig(__dirname);\nconfig.watchFolders = [path.resolve(__dirname, '..')];\nconfig.resolver.nodeModulesPaths = [path.join(__dirname, 'node_modules'), path.resolve(__dirname, '../node_modules')];\nconfig.resolver.assetExts.push('glb', 'gltf', 'bin', 'hdr');\nconfig.resolver.resolveRequest = (context, name, platform) => {\n  if (name === '@jstxn/three-native/native') return { filePath: path.join(__dirname, platform === 'web' ? 'native.web.mjs' : 'native.ts'), type: 'sourceFile' };\n  if (name === 'three' || name === 'three/webgpu') return { filePath: require.resolve('three/webgpu'), type: 'sourceFile' };\n  return context.resolveRequest(context, name, platform);\n};\nmodule.exports = config;\n`,
   );
   return { host, installHash: createHash("sha256").update(json).digest("hex") };
 }

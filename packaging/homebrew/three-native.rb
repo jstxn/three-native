@@ -1,8 +1,8 @@
 class ThreeNative < Formula
   desc "Build Three.js scenes for native iOS and the web"
   homepage "https://github.com/jstxn/three-native"
-  url "https://registry.npmjs.org/@jstxn/three-native/-/three-native-0.2.0.tgz"
-  sha256 "37dc6e17b67a23ba706e80b8b160215d5c67c52977331d045bc8e372b3b87f27"
+  url "https://registry.npmjs.org/@jstxn/three-native/-/three-native-0.3.0.tgz"
+  sha256 "0c7606f2ed4c6ec3e22606fd48b9834ef8357fd31a8e0333dd49fb7c35857394"
   license "MIT"
   depends_on "node"
 
@@ -15,6 +15,6 @@ class ThreeNative < Formula
   end
 
   test do
-    assert_equal "0.2.0", shell_output("#{bin}/three-native --version").strip
+    assert_equal "0.3.0", shell_output("#{bin}/three-native --version").strip
   end
 end

@@ -94,7 +94,15 @@ test("CLI rejects unknown commands and invalid preview ports", () => {
     () =>
       execFileSync(
         process.execPath,
-        [cli, "preview", "ios", "--simulator", "test", "--port", "oops"],
+        [
+          cli,
+          "preview",
+          "ios",
+          "--simulator",
+          "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
+          "--port",
+          "oops",
+        ],
         { stdio: "pipe" },
       ),
     /port must be/,
@@ -129,3 +137,91 @@ test("config needs only an entry and validates explicit app metadata", async (t)
   await writeFile(file, "export default { entry: './main.js', ios: null };\n");
   await assert.rejects(loadConfig(root), /ios must be/);
 });
+
+test("preview defaults and invalid device config are validated before generation", async (t) => {
+  const root = await fixture(t);
+  await initProject(root);
+  const config = await loadConfig(root);
+  assert.deepEqual(config.preview, {
+    device: "iphone-18-pro",
+    orientation: "portrait",
+  });
+  const { host } = await prepareProject(config);
+  assert.match(
+    await readFile(path.join(host, "App.tsx"), "utf8"),
+    /DevicePreview.*iphone-18-pro/,
+  );
+  assert.match(
+    await readFile(path.join(host, "DevicePreview.web.tsx"), "utf8"),
+    /Target device/,
+  );
+  assert.doesNotMatch(
+    await readFile(path.join(host, "DevicePreview.tsx"), "utf8"),
+    /iframe/,
+  );
+  const file = path.join(root, "three-native.config.mjs");
+  await writeFile(
+    file,
+    "export default {entry:'./src/native-scene.ts',preview:{device:'imaginary'}};\n",
+  );
+  await assert.rejects(loadConfig(root), /Unknown preview device/);
+  await writeFile(
+    file,
+    "export default {entry:'./src/native-scene.ts',preview:{device:'iphone-se-3',orientation:'landscape'}};\n",
+  );
+  assert.deepEqual((await loadConfig(root)).preview, {
+    device: "iphone-se-3",
+    orientation: "landscape",
+  });
+});
+
+test("native host config includes permission plugins and validates Apple signing team", async (t) => {
+  const root = await fixture(t);
+  await initProject(root);
+  const file = path.join(root, "three-native.config.mjs");
+  await writeFile(
+    file,
+    "export default {entry:'./src/native-scene.ts',ios:{appleTeamId:'ABC1234567'}};\n",
+  );
+  const { host } = await prepareProject(await loadConfig(root));
+  const app = JSON.parse(
+    await readFile(path.join(host, "app.json"), "utf8"),
+  ).expo;
+  assert.equal(app.ios.appleTeamId, "ABC1234567");
+  assert.ok(app.plugins.some((plugin) => plugin[0] === "expo-location"));
+  assert.equal(
+    app.plugins.find((plugin) => plugin[0] === "expo-image-picker")[1]
+      .microphonePermission,
+    false,
+  );
+  assert.match(
+    await readFile(path.join(host, "metro.config.js"), "utf8"),
+    /@jstxn\/three-native\/native/,
+  );
+  assert.match(
+    await readFile(path.join(host, "native.ts"), "utf8"),
+    /expo-sensors/,
+  );
+  await writeFile(
+    file,
+    "export default {entry:'./src/native-scene.ts',ios:{appleTeamId:'invalid'}};\n",
+  );
+  await assert.rejects(loadConfig(root), /10-character Apple/);
+});
+
+test(
+  "MCP clients can select a project from another working directory",
+  { skip: process.platform !== "darwin" },
+  async (t) => {
+    const root = await fixture(t);
+    await initProject(root);
+    assert.throws(
+      () =>
+        execFileSync(process.execPath, [cli, "mcp", "--project", root], {
+          cwd: tmpdir(),
+          stdio: "pipe",
+        }),
+      /generate the native host/,
+    );
+  },
+);
