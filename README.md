@@ -10,7 +10,7 @@ If you are building a Three.js game with a coding agent, Three Native helps you 
 
 The game stays in JavaScript. Its native graphics surface renders through React Native WebGPU → Dawn → Metal. Your existing browser build remains available for fast iteration.
 
-[Agent-to-iPhone workflow](#from-agent-built-game-to-iphone) · [Measurements](#performance-you-can-inspect) · [Compatibility](#what-works-today) · [API & commands](packages/three-native/README.md)
+[Agent-to-iPhone workflow](#from-agent-built-game-to-iphone) · [What it adds](#what-three-native-adds) · [Compatibility](#what-works-today) · [API & commands](packages/three-native/README.md)
 
 > **Early alpha.** Install from a local tarball; npm and Homebrew publishing are pending. Requires Node 22.18+. iPhone development requires macOS, Xcode, device trust, Developer Mode, and valid signing. The native host pins Three.js 0.186.0.
 
@@ -20,11 +20,13 @@ The game stays in JavaScript. Its native graphics surface renders through React 
 
 **Left:** a native app in the iPhone 18 Pro **Simulator**. **Right:** the browser build. Both use the same scene source. This 30 fps recording demonstrates the two runtimes; it is not physical-iPhone footage or a device-performance benchmark.
 
-| Build with your agent | Bring device feedback into the next iteration |
-| :-- | :-- |
-| **Keep your Three.js entry.** Supported renderer setup, frame loops, resize handling, and pointer events are adapted into a native host. | **Build for a connected iPhone.** Use your development signing team and the same project config. |
-| **Fix compatibility issues early.** `doctor --json` gives your agent diagnostic codes, file locations, and suggested changes. | **Inspect and interact.** CLI/MCP tools expose screenshots, native UI inspection, taps, swipes, and typing. |
-| **Keep iterating in the browser.** The original source and web build stay intact; generated files live in `.three-native/`. | **Retest the change.** Rebuild or reload the app and check the behavior you observed on the device. |
+## What Three Native adds
+
+![Workflow comparison: a browser-only Three.js game gains a generated native host, native rendering and lifecycle adapters, compatibility diagnostics, and iPhone feedback through CLI or MCP.](docs/media/workflow-value.svg)
+
+The improvement is the path from a browser prototype to an iPhone development and testing loop. Three Native supplies the host, supported adapters, and project-aware tools you would otherwise integrate around your game. It does not require you to move your scene into a new game engine.
+
+In the included [vanilla example](examples/vanilla), both original game files stay unchanged while the CLI generates the native host. Rendering has been verified in the browser and iOS Simulator; physical-device validation is described below.
 
 ## From agent-built game to iPhone
 
@@ -201,20 +203,16 @@ if (native.info().environment === "device") {
 }
 ```
 
-## Performance you can inspect
+<details>
+<summary><strong>Engineering baselines and measurement limits</strong></summary>
 
-![Measured browser rendering and local CLI timings: both sample scenes at 60 median FPS; source checks and host generation measured separately from native compilation.](docs/media/performance.svg)
+The two small reference scenes reported 60 FPS in 20-second browser samples on an Apple M5 Pro at a 358 × 350 drawing buffer. These establish that the examples run; they do not establish a speedup over another approach or predict iPhone performance.
 
-Measurements from **November 4, 2026**, on an **Apple M5 Pro**. Chromium 156 used the Apple Metal WebGPU adapter at a **358 × 350 drawing buffer, DPR 1**. Each animated scene was sampled for 20 seconds after warmup.
+The local CLI timing samples measure source analysis and host generation, excluding dependency installation and Xcode compilation. They are not end-to-end build times.
 
-| Browser scene | Median reported FPS | Draw calls | Triangles |
-| :-- | --: | --: | --: |
-| Copper orbit · PBR + 64 instanced spheres | 60 | 4 | 17,153 |
-| Bundled glTF · textured model | 60 | 3 | 939 |
+[Baseline charts, raw samples, and reproduction steps →](docs/benchmarks/README.md)
 
-Local `doctor --json` and `prepare` timings include Node startup and use the two-file vanilla example. They exclude dependency installation and Xcode compilation. **These are browser and CLI measurements, not physical-iPhone FPS or an end-to-end build-time promise.** Larger scenes, higher resolutions, device thermals, and third-party code need their own profiling.
-
-[Methodology, raw samples, and reproduction steps →](docs/benchmarks/README.md)
+</details>
 
 ## What works today
 

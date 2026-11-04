@@ -2,7 +2,13 @@
 
 These measurements describe the included reference scenes and a small existing-entry fixture. They establish a reproducible starting point; they are not a general Three.js, iPhone, or production-game benchmark.
 
-[Raw samples](2026-11-04.json) · [Chart source](render.py) · [Root README](../../README.md#performance-you-can-inspect)
+[Raw samples](2026-11-04.json) · [Chart source](render.py) · [Root README](../../README.md#what-three-native-adds)
+
+## Baseline measurements
+
+![Two reference browser scenes report 60 FPS; local source checking and host-generation timings are shown separately. These are baseline measurements, not comparative performance gains.](../media/performance.svg)
+
+These checks have no competing implementation or before/after control. Use them to understand the test setup and reproduce the examples, not as evidence that Three Native renders faster or reduces complete iOS build time.
 
 ## Browser rendering
 

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+  <title id="title">Add a native iPhone development and testing loop.</title>
+  <desc id="desc">Starting with a browser-only Three.js game, Three Native provides a generated iOS host, native WebGPU rendering, supported touch and lifecycle adapters, compatibility diagnostics, and CLI or MCP device feedback. This is a workflow comparison, not a rendering-speed benchmark.</desc>
+  <rect width="1200" height="650" rx="20" fill="#f3f7f9"/>
+  <g font-family="Arial,Helvetica,sans-serif">
+    <text x="46" y="60" font-size="32" font-weight="700" fill="#183548" letter-spacing="-.7">Add a native iPhone build-and-test loop.</text>
+    <text x="46" y="99" font-size="18" fill="#64798b">Starting point: the browser-only Three.js game you built with your agent.</text>
+    <rect x="36" y="135" width="544" height="433" rx="14" fill="#fff" stroke="#d5e1e8"/>
+    <rect x="620" y="135" width="544" height="433" rx="14" fill="#fff" stroke="#a8cfc7" stroke-width="1.5"/>
+    <path d="M50 135H566Q580 135 580 149V210H36V149Q36 135 50 135Z" fill="#e7eff3"/>
+    <path d="M634 135H1150Q1164 135 1164 149V210H620V149Q620 135 634 135Z" fill="#dfefea"/>
+    <text x="62" y="180" font-size="23" font-weight="700" fill="#183548">Your browser prototype</text>
+    <text x="646" y="180" font-size="23" font-weight="700" fill="#215f55">What Three Native adds</text>
+    <path d="M594 172H607M602 167L607 172 602 177" fill="none" stroke="#297d8d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <g fill="#728896" font-size="11.5" font-weight="700" letter-spacing="1.4">
+      <text x="62" y="238">NATIVE APP HOST</text><text x="646" y="238">NATIVE APP HOST</text>
+      <text x="62" y="307">RENDERING</text><text x="646" y="307">RENDERING</text>
+      <text x="62" y="376">TOUCH + APP LIFECYCLE</text><text x="646" y="376">TOUCH + APP LIFECYCLE</text>
+      <text x="62" y="445">KNOWN PORTING BLOCKERS</text><text x="646" y="445">KNOWN PORTING BLOCKERS</text>
+      <text x="62" y="514">FEEDBACK FOR YOUR AGENT</text><text x="646" y="514">FEEDBACK FOR YOUR AGENT</text>
+    </g>
+    <g fill="#526b7b" font-size="19">
+      <text x="62" y="267">iOS integration to arrange</text>
+      <text x="62" y="336">Browser canvas + frame loop</text>
+      <text x="62" y="405">Platform behavior to bridge</text>
+      <text x="62" y="474">Porting issues to investigate</text>
+      <text x="62" y="543">Browser screenshots and input</text>
+    </g>
+    <g fill="#183548" font-size="19" font-weight="700">
+      <text x="646" y="267">CLI-generated React Native host</text>
+      <text x="646" y="336">Native WebGPU → Metal runtime</text>
+      <text x="646" y="405">Supported input + lifecycle adapters</text>
+      <text x="646" y="474">File, line, and suggested changes</text>
+      <text x="646" y="543">iPhone screenshots + input via CLI/MCP</text>
+    </g>
+    <g stroke="#e5edf1">
+      <path d="M62 282H554M646 282H1138"/>
+      <path d="M62 351H554M646 351H1138"/>
+      <path d="M62 420H554M646 420H1138"/>
+      <path d="M62 489H554M646 489H1138"/>
+    </g>
+    <text x="46" y="610" font-size="16" fill="#526b7b">For supported entry patterns. Native signing and project-specific adaptations remain required.</text>
+  </g>
+</svg>
