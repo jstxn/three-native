@@ -6,7 +6,7 @@ An installable CLI and runtime that add a native iOS target to an existing Three
 
 ![The same Three.js scene running in the native iOS Simulator and directly in a browser, rotating and changing materials](docs/media/three-native-demo.gif)
 
-**Left:** the native iOS app in an iPhone 18 Pro Simulator. **Right:** the same Three.js scene rendered directly in the browser. Both captures show live animation and material changes from user input.
+**Left:** the native iOS app in an iPhone 18 Pro Simulator. **Right:** the same Three.js scene rendered directly in the browser. The 30 fps GIF shows live animation and material changes from user input in both runtimes.
 
 ## Try the installable package
 
